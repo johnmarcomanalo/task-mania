@@ -1,0 +1,12 @@
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# No real environment file is ever committed, at any level.
+# Copy the .env.example next to it and fill that in instead.
+.env
+.env.*
+!.env.example
