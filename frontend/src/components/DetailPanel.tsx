@@ -292,7 +292,7 @@ export function DetailPanel({
               if (files.length) onAttach(task, files)
             }}
           >
-            {zoneOver ? 'Drop to attach' : 'Drop files here, or click to choose'}
+            {zoneOver ? 'Drop to attach' : 'Drop, paste, or click to choose'}
           </button>
 
           <input

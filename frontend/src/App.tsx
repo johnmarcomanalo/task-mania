@@ -40,6 +40,20 @@ function locate(tasks: Task[], id: number) {
   return i === -1 ? null : { task: tasks[i], index: i }
 }
 
+/**
+ * Every image off the clipboard arrives called "image.png", so a task with
+ * three pasted shots would list the same name three times. Stamp it instead.
+ */
+function namePaste(file: File): File {
+  const ext = (file.type.split('/')[1] ?? 'png').replace('jpeg', 'jpg')
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+    + `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+
+  return new File([file], `pasted-${stamp}.${ext}`, { type: file.type })
+}
+
 function inColumn(tasks: Task[], columnId: number) {
   return tasks.filter((t) => t.column_id === columnId).sort((a, b) => a.position - b.position)
 }
@@ -160,15 +174,25 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey)
   }, [lightbox])
 
-  // Paste an image anywhere to scan it.
+  // Paste an image: onto an open task it becomes an attachment, otherwise it
+  // starts a scan. With a task open, "Add from screenshot" is still the way to
+  // read a new one, so nothing is out of reach.
   useEffect(() => {
     function onPaste(e: ClipboardEvent) {
+      // A paste while the review is open would restart the scan and throw away
+      // whatever has been typed into it.
+      if (scanPreview) return
+
       for (const item of Array.from(e.clipboardData?.items ?? [])) {
         if (item.type.startsWith('image')) {
           const f = item.getAsFile()
           if (f) {
             e.preventDefault()
-            void ingest(f)
+            // Read the open task off the board rather than the memo below it,
+            // which this effect runs above.
+            const open = board?.tasks.find((t) => t.id === openId) ?? null
+            if (open) void attach(open, [namePaste(f)])
+            else void ingest(f)
           }
           return
         }
@@ -176,7 +200,7 @@ export default function App() {
     }
     document.addEventListener('paste', onPaste)
     return () => document.removeEventListener('paste', onPaste)
-  }, [ingest])
+  }, [ingest, board, openId, scanPreview])
 
   // Drag an image onto the window to scan it.
   useEffect(() => {
