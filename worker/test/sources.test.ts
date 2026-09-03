@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ALICE, BOB, boardIdOf, boardOf, del, env, get, json, meOf, patch, post, seedTask } from './helpers'
 
 async function sourceId(who: string, name: string): Promise<number> {
@@ -7,13 +7,6 @@ async function sourceId(who: string, name: string): Promise<number> {
 }
 
 describe('sources', () => {
-  // This suite renames, archives and deletes sources by name across several
-  // tests; without a reset each test would see the previous one's mutations
-  // (the pool only isolates storage between test files, not between `it`s).
-  beforeEach(async () => {
-    await env.DB.prepare(`DELETE FROM users`).run()
-  })
-
   it('lists the sources a board starts with, counting tasks', async () => {
     const me = await meOf(ALICE)
     await seedTask(await boardIdOf(me.board_slug), 'Viber')
