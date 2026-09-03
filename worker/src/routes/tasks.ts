@@ -1,12 +1,12 @@
 import { Hono } from 'hono'
 import { nowIso, todayIn } from '../dates'
-import { note, renumber } from '../db'
+import { note, renumber, rows } from '../db'
 import type { AppEnv, Env } from '../env'
 import { invalid, notFound } from '../errors'
 import { activeSourceExists, findColumn, findTask, nextPosition, taskPayload } from '../queries'
 import { ownBoard } from '../scope'
-import type { ColumnRow } from '../serialize'
-import { jsonBody, parse, taskCreateSchema, taskUpdateSchema, type TaskUpdate } from '../validate'
+import type { ColumnRow, FileRow } from '../serialize'
+import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSchema, type TaskUpdate } from '../validate'
 
 export const tasks = new Hono<AppEnv>()
 
@@ -145,4 +145,99 @@ tasks.patch('/tasks/:id', async (c) => {
   await db.batch(statements)
 
   return c.json({ data: await taskPayload(db, board.id, task.id, true) })
+})
+
+/**
+ * Move a task to a column at an explicit index, closing the gap it left and
+ * opening one where it lands. Both lists end contiguous from 0.
+ */
+tasks.patch('/tasks/:id/move', async (c) => {
+  const board = c.get('board')
+  const db = c.env.DB
+  const task = await findTask(db, board.id, Number(c.req.param('id')))
+  if (!task) throw notFound()
+
+  const data = parse(moveSchema, await jsonBody(c))
+  const column = await findColumn(db, board.id, data.column_id)
+  if (!column) throw invalid('column_id', 'The selected column id is invalid.')
+
+  const from = task.board_column_id
+  const to = column.id
+  const target = data.position
+  const doneOn = column.is_done ? (task.done_on ?? todayIn(zone(c.env))) : null
+
+  const statements = [
+    db
+      .prepare(`UPDATE tasks SET position = position - 1 WHERE board_column_id = ?1 AND position > ?2 AND id <> ?3`)
+      .bind(from, task.position, task.id),
+    db
+      .prepare(`UPDATE tasks SET position = position + 1 WHERE board_column_id = ?1 AND position >= ?2 AND id <> ?3`)
+      .bind(to, target, task.id),
+    db
+      .prepare(`UPDATE tasks SET board_column_id = ?1, position = ?2, done_on = ?3, updated_at = ?4 WHERE id = ?5`)
+      .bind(to, target, doneOn, nowIso(), task.id),
+    renumber(db, from),
+  ]
+  if (to !== from) statements.push(renumber(db, to), note(db, board.id, `Moved to ${column.name}`, task.id))
+  await db.batch(statements)
+
+  return c.json({ data: await taskPayload(db, board.id, task.id, true) })
+})
+
+tasks.delete('/tasks/:id', async (c) => {
+  const board = c.get('board')
+  const db = c.env.DB
+  const task = await findTask(db, board.id, Number(c.req.param('id')))
+  if (!task) throw notFound()
+
+  const files = await rows<FileRow>(db.prepare(`SELECT * FROM task_files WHERE task_id = ?1`).bind(task.id))
+  await Promise.all(files.map((f) => c.env.FILES.delete(f.path)))
+
+  // The line outlives the task, so it carries no task id; older lines lose theirs via ON DELETE SET NULL.
+  await db.batch([
+    note(db, board.id, `Deleted: ${task.title}`),
+    db.prepare(`DELETE FROM tasks WHERE id = ?1`).bind(task.id),
+    renumber(db, task.board_column_id),
+  ])
+
+  return c.body(null, 204)
+})
+
+/** Create several tasks at once, as a confirmed screenshot review does. */
+tasks.post('/boards/:slug/tasks/bulk', async (c) => {
+  const board = ownBoard(c)
+  const db = c.env.DB
+  const data = parse(bulkSchema, await jsonBody(c))
+
+  if (data.source !== undefined && !(await activeSourceExists(db, board.id, data.source))) {
+    throw invalid('source', 'The selected source is invalid.')
+  }
+  const source = data.source ?? 'Manual'
+
+  const columns = new Map<number, ColumnRow>()
+  for (const [i, row] of data.tasks.entries()) {
+    if (columns.has(row.column_id)) continue
+    const column = await findColumn(db, board.id, row.column_id)
+    if (!column) throw invalid(`tasks.${i}.column_id`, `The selected tasks.${i}.column_id is invalid.`)
+    columns.set(row.column_id, column)
+  }
+
+  const ids: number[] = []
+  const after: D1PreparedStatement[] = []
+  for (const row of data.tasks) {
+    const column = columns.get(row.column_id)!
+    const id = await insertTask(db, zone(c.env), board.id, column, {
+      ...payload(row),
+      source,
+      screenshot_path: data.screenshot_path ?? null,
+    })
+    const who = (row.sender ?? '').trim()
+    after.push(note(db, board.id, `Captured from ${source}${who ? ` (${who})` : ''} — placed in ${column.name}`, id))
+    ids.push(id)
+  }
+  for (const columnId of columns.keys()) after.push(renumber(db, columnId))
+  await db.batch(after)
+
+  const list = await Promise.all(ids.map((id) => taskPayload(db, board.id, id, true)))
+  return c.json({ data: list }, 201)
 })
