@@ -15,7 +15,9 @@ files.post('/tasks/:id/files', async (c) => {
   const task = await findTask(db, board.id, Number(c.req.param('id')))
   if (!task) throw notFound()
 
-  const body = await c.req.parseBody({ all: true })
+  const body = await c.req.parseBody({ all: true }).catch(() => {
+    throw invalid('files', 'The files field is required.')
+  })
   const list = filesFrom(body, 'files[]')
   if (list.length === 0) throw invalid('files', 'The files field is required.')
   if (list.length > MAX_FILES) throw invalid('files', `The files may not have more than ${MAX_FILES} items.`)

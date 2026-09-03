@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALICE, BOB, boardOf, columnOf, del, env, get, json, meOf, post } from './helpers'
+import { ALICE, BOB, boardOf, call, columnOf, del, env, get, json, meOf, post } from './helpers'
 
 // A 1×1 transparent PNG.
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
@@ -61,6 +61,17 @@ describe('scan', () => {
     expect(sniffed.status).toBe(422)
     expect((await json(sniffed)).errors.image).toEqual(['The image must be an image.'])
   })
+
+  it('rejects a malformed multipart body', async () => {
+    const me = await meOf(ALICE)
+    const res = await call(`/api/boards/${me.board_slug}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/form-data; boundary=x' },
+      body: 'garbage',
+    })
+    expect(res.status).toBe(422)
+    expect((await json(res)).errors.image).toEqual(['The image field is required.'])
+  })
 })
 
 describe('storage', () => {
@@ -114,6 +125,17 @@ describe('attachments', () => {
     expect((await post(`/api/tasks/${id}/files`, many)).status).toBe(422)
 
     expect((await post(`/api/tasks/${id}/files`, form('files[]', pngFile()), BOB)).status).toBe(404)
+  })
+
+  it('rejects a malformed multipart body', async () => {
+    const id = await taskFor()
+    const res = await call(`/api/tasks/${id}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/form-data; boundary=x' },
+      body: 'garbage',
+    })
+    expect(res.status).toBe(422)
+    expect((await json(res)).errors.files).toEqual(['The files field is required.'])
   })
 
   it('detaches a file, removing the object and the row', async () => {

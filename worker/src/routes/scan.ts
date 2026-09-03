@@ -16,7 +16,9 @@ const ALLOWED = new Set(Object.values(IMAGE_MIMES))
 
 scan.post('/boards/:slug/scan', async (c) => {
   ownBoard(c)
-  const body = await c.req.parseBody({ all: true })
+  const body = await c.req.parseBody({ all: true }).catch(() => {
+    throw invalid('image', 'The image field is required.')
+  })
   const [image] = filesFrom(body, 'image')
 
   if (!image) throw invalid('image', 'The image field is required.')
