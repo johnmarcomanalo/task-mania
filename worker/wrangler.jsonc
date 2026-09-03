@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "task-mania",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "1bb12d1c-9fd9-4f66-89c0-1d8633fa10de",
       "migrations_dir": "migrations"
     }
   ],
