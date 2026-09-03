@@ -90,6 +90,30 @@ describe('storage', () => {
     expect((await get('/storage/../wrangler.jsonc')).status).toBe(404)
     expect((await get('/storage/other/x.png')).status).toBe(404)
   })
+
+  it('hardens the response headers for a non-image attachment', async () => {
+    const id = await taskFor()
+    const notes = new File(['hello'], 'notes.txt', { type: 'text/plain' })
+    const { data } = await json(await post(`/api/tasks/${id}/files`, form('files[]', notes)))
+
+    const res = await get(data[0].url)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(res.headers.get('content-disposition')).toMatch(/^attachment; filename="notes\.txt"/)
+  })
+
+  it('serves an inline image with no content-disposition', async () => {
+    const me = await meOf(ALICE)
+    const { screenshot } = await json(await post(`/api/boards/${me.board_slug}/scan`, form('image', pngFile())))
+
+    const res = await get(screenshot.url)
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(res.headers.get('content-disposition')).toBeNull()
+  })
+
+  it('404s instead of throwing on a malformed URI escape', async () => {
+    expect((await get('/storage/%E0%A4%A')).status).toBe(404)
+  })
 })
 
 describe('attachments', () => {
