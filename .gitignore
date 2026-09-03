@@ -10,3 +10,8 @@ desktop.ini
 .env
 .env.*
 !.env.example
+
+# Cloudflare worker: local secrets, wrangler state, dependencies
+worker/.dev.vars
+worker/.wrangler/
+worker/node_modules/

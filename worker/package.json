@@ -1,0 +1,27 @@
+{
+  "name": "task-mania-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:ui": "cross-env VITE_API_URL=/api npm --prefix ../frontend run build",
+    "build": "npm --prefix ../frontend ci && npm run build:ui",
+    "dev": "npm run build:ui && wrangler d1 migrations apply DB --local && wrangler dev",
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.13.5",
+    "jose": "^6.2.10",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.1.3",
+    "@cloudflare/workers-types": "^5.20260903.1",
+    "@types/node": "^24.13.3",
+    "cross-env": "^10.1.0",
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.128.0"
+  }
+}
