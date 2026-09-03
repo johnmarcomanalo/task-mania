@@ -30,6 +30,13 @@ npm run dev
 
 Rebuild the database at any time with `php artisan migrate:fresh --seed`.
 
+## Running it on Cloudflare
+
+The same app runs on Cloudflare's free plan — UI, API, database and files —
+with Cloudflare Access sign-in and a private board per email. `worker/` holds
+that build; [`worker/README.md`](worker/README.md) covers local runs, the
+one-time setup and day-to-day operations.
+
 ## Screenshots
 
 Press **Add from screenshot**, paste an image with `Ctrl+V`, or drop one anywhere

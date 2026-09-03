@@ -1,0 +1,3 @@
+# Copy to .dev.vars (git-ignored). Who you are under `wrangler dev`, where there
+# is no Cloudflare Access in front. Never set this in production vars.
+ACCESS_DEV_EMAIL=you@example.com
