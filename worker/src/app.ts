@@ -3,6 +3,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { requireUser, type AuthOptions } from './auth'
 import type { AppEnv } from './env'
 import { HttpError, ValidationError } from './errors'
+import { boards } from './routes/boards'
 import { me } from './routes/me'
 
 export function createApp(options: AuthOptions = {}) {
@@ -22,6 +23,7 @@ export function createApp(options: AuthOptions = {}) {
   app.use('/storage/*', guard)
 
   app.route('/api', me)
+  app.route('/api', boards)
 
   return app
 }

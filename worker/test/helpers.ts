@@ -31,3 +31,27 @@ export const json = async <T = any>(res: Response): Promise<T> => (await res.jso
 export async function meOf(who = ALICE): Promise<{ email: string; name: string | null; board_slug: string }> {
   return (await json(await get('/api/me', who))).data
 }
+
+export interface BoardJson {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  sources: { id: number; name: string; position: number; is_archived: boolean }[]
+  priorities: string[]
+  scan_enabled: boolean
+  columns: { id: number; key: string; name: string; position: number; is_done: boolean }[]
+  tasks: Record<string, unknown>[]
+  activity: { id: number; task_id: number | null; text: string; at: string }[]
+}
+
+export async function boardOf(who = ALICE): Promise<BoardJson> {
+  const me = await meOf(who)
+  return (await json(await get(`/api/boards/${me.board_slug}`, who))).data
+}
+
+export function columnOf(board: BoardJson, key: string): number {
+  const column = board.columns.find((c) => c.key === key)
+  if (!column) throw new Error(`no column ${key}`)
+  return column.id
+}
