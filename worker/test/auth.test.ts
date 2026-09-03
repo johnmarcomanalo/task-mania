@@ -2,7 +2,7 @@ import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from 'jose'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app'
 import type { Env } from '../src/env'
-import { ALICE, BOB, env, get, json, meOf } from './helpers'
+import { ALICE, app, BOB, env, get, json, meOf } from './helpers'
 
 describe('dev bypass', () => {
   it('signs the caller in as the dev email and gives them a board', async () => {
@@ -42,6 +42,16 @@ describe('dev bypass', () => {
 
   it('refuses when there is neither a token nor a dev email', async () => {
     const res = await createApp().request('/api/me', {}, { ...env, ACCESS_DEV_EMAIL: undefined })
+    expect(res.status).toBe(401)
+    expect(await json(res)).toEqual({ message: 'Not signed in.' })
+  })
+
+  it('does not honour the dev bypass off localhost', async () => {
+    const res = await app.request(
+      'http://task-mania.example.workers.dev/api/me',
+      { headers: { 'X-Dev-Email': ALICE } },
+      env,
+    )
     expect(res.status).toBe(401)
     expect(await json(res)).toEqual({ message: 'Not signed in.' })
   })

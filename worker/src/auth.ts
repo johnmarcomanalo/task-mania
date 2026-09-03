@@ -27,10 +27,15 @@ function normalizeEmail(value: unknown): string | null {
   return email.includes('@') ? email : null
 }
 
+const DEV_HOSTS = new Set(['localhost', '127.0.0.1'])
+
 /**
  * Who is calling. A Cf-Access-Jwt-Assertion header is verified against the
  * team's keys; without one, the local dev bypass applies when ACCESS_DEV_EMAIL
- * is set (X-Dev-Email may override it so tests can be several people). Null
+ * is set AND the request's own hostname is localhost or 127.0.0.1 — what
+ * `wrangler dev` and the tests use (Ruling R5). Any other host never gets the
+ * bypass, even if the var were ever set in production by mistake. X-Dev-Email
+ * may override the configured address so tests can be several people. Null
  * means nobody we trust.
  */
 export async function identify(req: Request, env: Env, keys?: JWTVerifyGetKey): Promise<string | null> {
@@ -49,7 +54,7 @@ export async function identify(req: Request, env: Env, keys?: JWTVerifyGetKey): 
     }
   }
 
-  if (env.ACCESS_DEV_EMAIL) {
+  if (env.ACCESS_DEV_EMAIL && DEV_HOSTS.has(new URL(req.url).hostname)) {
     return normalizeEmail(req.headers.get('X-Dev-Email') ?? env.ACCESS_DEV_EMAIL)
   }
 
