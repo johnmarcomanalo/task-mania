@@ -4,6 +4,7 @@ import { note } from '../db'
 import type { AppEnv } from '../env'
 import { invalid, notFound } from '../errors'
 import { findTask } from '../queries'
+import { idParam } from '../scope'
 import { fileJson, type FileRow } from '../serialize'
 import { MAX_FILES, MAX_FILE_BYTES, filesFrom, objectKey, putObject } from '../uploads'
 
@@ -12,7 +13,7 @@ export const files = new Hono<AppEnv>()
 files.post('/tasks/:id/files', async (c) => {
   const board = c.get('board')
   const db = c.env.DB
-  const task = await findTask(db, board.id, Number(c.req.param('id')))
+  const task = await findTask(db, board.id, idParam(c))
   if (!task) throw notFound()
 
   const body = await c.req.parseBody({ all: true }).catch(() => {
@@ -50,7 +51,7 @@ files.delete('/task-files/:id', async (c) => {
   const db = c.env.DB
   const file = await db
     .prepare(`SELECT f.* FROM task_files f JOIN tasks t ON t.id = f.task_id WHERE f.id = ?1 AND t.board_id = ?2`)
-    .bind(Number(c.req.param('id')), board.id)
+    .bind(idParam(c), board.id)
     .first<FileRow>()
   if (!file) throw notFound()
 

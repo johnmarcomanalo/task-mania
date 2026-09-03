@@ -4,7 +4,7 @@ import { rows } from '../db'
 import type { AppEnv } from '../env'
 import { invalid, notFound } from '../errors'
 import { findSource } from '../queries'
-import { ownBoard } from '../scope'
+import { idParam, ownBoard } from '../scope'
 import { sourceJson, type SourceRow } from '../serialize'
 import { jsonBody, parse, sourceCreateSchema, sourceUpdateSchema } from '../validate'
 
@@ -69,7 +69,7 @@ sources.post('/boards/:slug/sources', async (c) => {
 sources.patch('/sources/:id', async (c) => {
   const board = c.get('board')
   const db = c.env.DB
-  const source = await findSource(db, board.id, Number(c.req.param('id')))
+  const source = await findSource(db, board.id, idParam(c))
   if (!source) throw notFound()
 
   const data = parse(sourceUpdateSchema, await jsonBody(c))
@@ -100,7 +100,7 @@ sources.patch('/sources/:id', async (c) => {
 sources.delete('/sources/:id', async (c) => {
   const board = c.get('board')
   const db = c.env.DB
-  const source = await findSource(db, board.id, Number(c.req.param('id')))
+  const source = await findSource(db, board.id, idParam(c))
   if (!source) throw notFound()
 
   // Dropping a name still on a task would leave that task unreadable,

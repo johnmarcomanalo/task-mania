@@ -4,7 +4,7 @@ import { note, renumber, rows } from '../db'
 import type { AppEnv, Env } from '../env'
 import { invalid, notFound } from '../errors'
 import { activeSourceExists, findColumn, findTask, nextPosition, taskPayload } from '../queries'
-import { ownBoard } from '../scope'
+import { idParam, ownBoard } from '../scope'
 import type { ColumnRow, FileRow } from '../serialize'
 import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSchema, type TaskUpdate } from '../validate'
 
@@ -109,7 +109,7 @@ const LINES: Record<string, string> = {
 tasks.patch('/tasks/:id', async (c) => {
   const board = c.get('board')
   const db = c.env.DB
-  const task = await findTask(db, board.id, Number(c.req.param('id')))
+  const task = await findTask(db, board.id, idParam(c))
   if (!task) throw notFound()
 
   const data = parse(taskUpdateSchema, await jsonBody(c))
@@ -154,7 +154,7 @@ tasks.patch('/tasks/:id', async (c) => {
 tasks.patch('/tasks/:id/move', async (c) => {
   const board = c.get('board')
   const db = c.env.DB
-  const task = await findTask(db, board.id, Number(c.req.param('id')))
+  const task = await findTask(db, board.id, idParam(c))
   if (!task) throw notFound()
 
   const data = parse(moveSchema, await jsonBody(c))
@@ -187,7 +187,7 @@ tasks.patch('/tasks/:id/move', async (c) => {
 tasks.delete('/tasks/:id', async (c) => {
   const board = c.get('board')
   const db = c.env.DB
-  const task = await findTask(db, board.id, Number(c.req.param('id')))
+  const task = await findTask(db, board.id, idParam(c))
   if (!task) throw notFound()
 
   const files = await rows<FileRow>(db.prepare(`SELECT * FROM task_files WHERE task_id = ?1`).bind(task.id))

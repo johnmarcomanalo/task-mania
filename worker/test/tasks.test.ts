@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { todayIn } from '../src/dates'
-import { ALICE, BOB, boardOf, columnOf, json, meOf, patch, post } from './helpers'
+import { ALICE, BOB, boardOf, columnOf, del, json, meOf, patch, post } from './helpers'
 
 const today = () => todayIn('Asia/Manila')
 
@@ -148,5 +148,10 @@ describe('update task', () => {
     expect((await patch(`/api/tasks/${task.id}`, { column_id: columnOf(bob, 'todo') })).status).toBe(422)
     expect((await patch(`/api/tasks/${task.id}`, { title: '' })).status).toBe(422)
     expect((await patch(`/api/tasks/${task.id}`, { title: 'x' }, BOB)).status).toBe(404)
+  })
+
+  it('404s a non-numeric id instead of coercing it', async () => {
+    expect((await patch('/api/tasks/abc', { title: 'x' })).status).toBe(404)
+    expect((await del('/api/task-files/1.5')).status).toBe(404)
   })
 })
