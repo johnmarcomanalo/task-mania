@@ -1,3 +1,3 @@
-export default {
-  fetch: () => new Response('Not found.', { status: 404 }),
-}
+import { createApp } from './app'
+
+export default createApp()
