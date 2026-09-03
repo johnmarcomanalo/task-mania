@@ -16,9 +16,9 @@ worker/
 
 ## Run it locally
 
-```bash
+```text
 npm --prefix worker install            # once
-copy worker\.dev.vars.example worker\.dev.vars   # who you are without Access
+copy worker\.dev.vars.example worker\.dev.vars   # who you are without Access (cmd/PowerShell); `cp` in Git Bash
 npm --prefix worker run dev            # builds the UI, migrates local D1, serves http://localhost:8787
 ```
 
@@ -69,6 +69,7 @@ You need a free Cloudflare account and this repository on GitHub.
   to a list of emails or an email domain to close the door. The free plan
   covers 50 users a month.
 - **Schema change**: add `migrations/0002_<what>.sql`; the next deploy applies it.
+- **Time zone**: `APP_TIMEZONE` in `wrangler.jsonc` vars (default `Asia/Manila`) decides which calendar day `captured`/`done_on` and the streak use.
 - **Start over**: `npx wrangler d1 execute DB --remote --command "DELETE FROM users"`
   cascades to boards, tasks, files and activity rows. Objects in R2 stay;
   empty the bucket from its page if you want them gone too.
