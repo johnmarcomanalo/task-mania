@@ -4,8 +4,11 @@ import { requireUser, type AuthOptions } from './auth'
 import type { AppEnv } from './env'
 import { HttpError, ValidationError } from './errors'
 import { boards } from './routes/boards'
+import { files } from './routes/files'
 import { me } from './routes/me'
+import { scan } from './routes/scan'
 import { sources } from './routes/sources'
+import { storage } from './routes/storage'
 import { tasks } from './routes/tasks'
 
 export function createApp(options: AuthOptions = {}) {
@@ -28,6 +31,9 @@ export function createApp(options: AuthOptions = {}) {
   app.route('/api', boards)
   app.route('/api', sources)
   app.route('/api', tasks)
+  app.route('/api', scan)
+  app.route('/api', files)
+  app.route('/storage', storage)
 
   return app
 }
