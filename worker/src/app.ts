@@ -5,6 +5,7 @@ import type { AppEnv } from './env'
 import { HttpError, ValidationError } from './errors'
 import { boards } from './routes/boards'
 import { me } from './routes/me'
+import { sources } from './routes/sources'
 
 export function createApp(options: AuthOptions = {}) {
   const app = new Hono<AppEnv>()
@@ -24,6 +25,7 @@ export function createApp(options: AuthOptions = {}) {
 
   app.route('/api', me)
   app.route('/api', boards)
+  app.route('/api', sources)
 
   return app
 }

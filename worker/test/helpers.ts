@@ -55,3 +55,26 @@ export function columnOf(board: BoardJson, key: string): number {
   if (!column) throw new Error(`no column ${key}`)
   return column.id
 }
+
+export async function boardIdOf(slug: string): Promise<number> {
+  const row = await env.DB.prepare(`SELECT id FROM boards WHERE slug = ?1`).bind(slug).first<{ id: number }>()
+  if (!row) throw new Error(`no board ${slug}`)
+  return row.id
+}
+
+/** A task row without going through the API, for tests about other resources. */
+export async function seedTask(boardId: number, source: string, title = 'Follow up with the supplier'): Promise<number> {
+  const column = await env.DB
+    .prepare(`SELECT id FROM board_columns WHERE board_id = ?1 ORDER BY position LIMIT 1`)
+    .bind(boardId)
+    .first<{ id: number }>()
+  const at = '2026-01-01T00:00:00.000Z'
+  const row = await env.DB
+    .prepare(
+      `INSERT INTO tasks (board_id, board_column_id, title, source, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?5) RETURNING id`,
+    )
+    .bind(boardId, column!.id, title, source, at)
+    .first<{ id: number }>()
+  return row!.id
+}
