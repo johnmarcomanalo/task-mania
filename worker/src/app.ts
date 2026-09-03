@@ -23,9 +23,8 @@ export function createApp(options: AuthOptions = {}) {
 
   app.notFound((c) => c.json({ message: 'Not found.' }, 404))
 
-  const guard = requireUser(options)
-  app.use('/api/*', guard)
-  app.use('/storage/*', guard)
+  app.use('/api/*', requireUser(options))
+  app.use('/storage/*', requireUser({ ...options, provision: false }))
 
   app.route('/api', me)
   app.route('/api', boards)

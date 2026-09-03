@@ -128,6 +128,36 @@ describe('Access JWT', () => {
   })
 })
 
+describe('provisioning', () => {
+  async function lastSeenAt(email: string): Promise<string> {
+    const row = await env.DB.prepare(`SELECT last_seen_at FROM users WHERE email = ?1`).bind(email).first<{
+      last_seen_at: string
+    }>()
+    return row!.last_seen_at
+  }
+
+  it('re-touches last_seen_at only once it is more than an hour stale', async () => {
+    await meOf(ALICE)
+
+    const staleAt = new Date(Date.now() - 2 * 3600_000).toISOString()
+    await env.DB.prepare(`UPDATE users SET last_seen_at = ?1 WHERE email = ?2`).bind(staleAt, ALICE).run()
+    await meOf(ALICE)
+    expect(await lastSeenAt(ALICE)).not.toBe(staleAt)
+
+    const freshAt = new Date(Date.now() - 5 * 60_000).toISOString()
+    await env.DB.prepare(`UPDATE users SET last_seen_at = ?1 WHERE email = ?2`).bind(freshAt, ALICE).run()
+    await meOf(ALICE)
+    expect(await lastSeenAt(ALICE)).toBe(freshAt)
+  })
+
+  it('never provisions a user from /storage', async () => {
+    const res = await get('/storage/screenshots/x.png', 'never-seen@example.com')
+    expect(res.status).toBe(404)
+    const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM users`).first<{ n: number }>()
+    expect(count!.n).toBe(0)
+  })
+})
+
 describe('routing', () => {
   it('answers unknown API paths with JSON 404', async () => {
     const res = await get('/api/nothing')

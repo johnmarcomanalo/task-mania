@@ -3,11 +3,16 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
 import { nowIso } from './dates'
 import { DEFAULT_COLUMNS, DEFAULT_SOURCES } from './defaults'
 import type { AppEnv, AuthBoard, AuthUser, Env } from './env'
-import { HttpError } from './errors'
+import { HttpError, notFound } from './errors'
 
 export interface AuthOptions {
   /** Key resolver for the Access JWT; tests inject a local key set. */
   keys?: JWTVerifyGetKey
+}
+
+export interface RequireUserOptions extends AuthOptions {
+  /** false for /storage/*: only an already-provisioned user may pass through; nobody is ever signed up here. */
+  provision?: boolean
 }
 
 const remoteKeys = new Map<string, JWTVerifyGetKey>()
@@ -104,26 +109,43 @@ function seedStatements(db: D1Database, userId: number, at: string): D1PreparedS
   ]
 }
 
-/** Upsert the user by email and make sure they own a board. */
+/** An hour-fresh sighting is left alone; anything else earns a write (Ruling R6). */
+function isRecent(lastSeenAt: string): boolean {
+  return lastSeenAt >= new Date(Date.now() - 3600_000).toISOString()
+}
+
+/** Read-first: touch the row only when the user hasn't been seen in the last hour, and make sure they own a board. */
 export async function provision(db: D1Database, email: string): Promise<{ user: AuthUser; board: AuthBoard }> {
   const at = nowIso()
 
-  const user = await db
-    .prepare(
-      `INSERT INTO users (email, created_at, last_seen_at) VALUES (?1, ?2, ?2)
-       ON CONFLICT(email) DO UPDATE SET last_seen_at = excluded.last_seen_at
-       RETURNING id, email, name`,
-    )
-    .bind(email, at)
-    .first<AuthUser>()
-  if (!user) throw new HttpError(500, 'Could not sign in.')
+  const existing = await db
+    .prepare(`SELECT id, email, name, last_seen_at FROM users WHERE email = ?1`)
+    .bind(email)
+    .first<AuthUser & { last_seen_at: string }>()
+
+  let user: AuthUser
+  if (existing && isRecent(existing.last_seen_at)) {
+    user = existing
+  } else {
+    const upserted = await db
+      .prepare(
+        `INSERT INTO users (email, created_at, last_seen_at) VALUES (?1, ?2, ?2)
+         ON CONFLICT(email) DO UPDATE SET last_seen_at = excluded.last_seen_at
+         RETURNING id, email, name`,
+      )
+      .bind(email, at)
+      .first<AuthUser>()
+    if (!upserted) throw new HttpError(500, 'Could not sign in.')
+    user = upserted
+  }
 
   let board = await findBoard(db, user.id)
   if (!board) {
     try {
       await db.batch(seedStatements(db, user.id, at))
-    } catch {
+    } catch (err) {
       // A concurrent first request already created it: boards.user_id is UNIQUE.
+      console.error('board seed failed', err)
     }
     board = await findBoard(db, user.id)
     if (!board) throw new HttpError(500, 'Could not create the board.')
@@ -132,10 +154,23 @@ export async function provision(db: D1Database, email: string): Promise<{ user: 
   return { user, board }
 }
 
-export function requireUser(options: AuthOptions = {}): MiddlewareHandler<AppEnv> {
+/** Read-only: for /storage/*, which must never sign anyone up — a never-seen email owns no objects. */
+export async function identifyExisting(db: D1Database, email: string): Promise<AuthUser | null> {
+  return db.prepare(`SELECT id, email, name FROM users WHERE email = ?1`).bind(email).first<AuthUser>()
+}
+
+export function requireUser(options: RequireUserOptions = {}): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const email = await identify(c.req.raw, c.env, options.keys)
     if (!email) throw new HttpError(401, 'Not signed in.')
+
+    if (options.provision === false) {
+      const user = await identifyExisting(c.env.DB, email)
+      if (!user) throw notFound()
+      c.set('user', user)
+      await next()
+      return
+    }
 
     const { user, board } = await provision(c.env.DB, email)
     c.set('user', user)
