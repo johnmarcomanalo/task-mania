@@ -14,6 +14,13 @@ export class ApiError extends Error {
   }
 }
 
+/** Who is signed in. `email` is null on the local Laravel setup, which has no login. */
+export interface Me {
+  email: string | null
+  name: string | null
+  board_slug: string
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isForm = init.body instanceof FormData
 
@@ -28,10 +35,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       },
     })
   } catch {
-    throw new ApiError(0, 'Cannot reach the API. Is the Laravel server running on port 8000?')
+    throw new ApiError(0, 'Cannot reach the API.')
   }
 
   if (res.status === 204) return undefined as T
+
+  // Cloudflare Access answers an expired session by redirecting the call to
+  // its login page, which is HTML: treat that as signed out.
+  const type = res.headers.get('content-type') ?? ''
+  if (res.redirected || (res.ok && !type.includes('json'))) {
+    throw new ApiError(401, 'Your session ended — reload to sign in again.')
+  }
 
   const text = await res.text()
   let payload: any = null
@@ -66,6 +80,8 @@ export interface BulkRow extends TaskInput {
 }
 
 export const api = {
+  me: () => request<Me>('/me'),
+
   getBoard: (slug: string) => request<Board>(`/boards/${encodeURIComponent(slug)}`),
 
   createTask: (slug: string, body: TaskInput) =>

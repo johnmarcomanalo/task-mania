@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
-import { ApiError, api, type BulkRow, type TaskInput } from './api'
+import { ApiError, api, type BulkRow, type Me, type TaskInput } from './api'
 import type { Board, ScanResult, ScanRow, Task, TaskFile, View } from './types'
 import { dueMeta, formatWhen, streakInfo } from './lib/dates'
 import { Lane } from './components/Lane'
@@ -24,8 +24,6 @@ import { SourceManager } from './components/SourceManager'
 
 import './styles/nocturne.css'
 import './styles/app.css'
-
-const BOARD_SLUG = 'task-mania'
 
 const VIEWS: { id: View; label: string }[] = [
   { id: 'board', label: 'Board' },
@@ -92,6 +90,9 @@ interface Lightbox {
 
 export default function App() {
   const [board, setBoard] = useState<Board | null>(null)
+  const [me, setMe] = useState<Me | null>(null)
+  // The board slug comes from /me; a ref keeps the callbacks below free of it.
+  const slugRef = useRef('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -128,7 +129,10 @@ export default function App() {
     setLoading(true)
     setLoadError(null)
     try {
-      setBoard(await api.getBoard(BOARD_SLUG))
+      const who = await api.me()
+      slugRef.current = who.board_slug
+      setMe(who)
+      setBoard(await api.getBoard(who.board_slug))
     } catch (e) {
       setLoadError(e instanceof ApiError ? e.message : 'Could not load the board.')
     } finally {
@@ -149,7 +153,7 @@ export default function App() {
     setScanBusy(true)
 
     try {
-      setScanResult(await api.scan(BOARD_SLUG, file))
+      setScanResult(await api.scan(slugRef.current, file))
     } catch (e) {
       setScanResult({
         screenshot: { path: '', url },
@@ -260,7 +264,7 @@ export default function App() {
     }))
 
     try {
-      await api.bulkCreate(BOARD_SLUG, {
+      await api.bulkCreate(slugRef.current, {
         screenshot_path: scanResult?.screenshot.path || null,
         source,
         tasks: payload,
@@ -396,7 +400,7 @@ export default function App() {
   /** Re-read the board without the loading state, to pick up server-side notes. */
   const refreshQuiet = useCallback(async () => {
     try {
-      setBoard(await api.getBoard(BOARD_SLUG))
+      setBoard(await api.getBoard(slugRef.current))
     } catch {
       /* a failed background refresh is not worth interrupting the user */
     }
@@ -406,7 +410,7 @@ export default function App() {
 
   async function addTask(columnId: number, title: string) {
     try {
-      await api.createTask(BOARD_SLUG, { column_id: columnId, title })
+      await api.createTask(slugRef.current, { column_id: columnId, title })
       await refreshQuiet()
     } catch (e) {
       notify(e instanceof ApiError ? e.message : 'Could not add that task.', 'error')
@@ -417,7 +421,7 @@ export default function App() {
   async function quickAdd() {
     if (!board) return
     try {
-      const task = await api.createTask(BOARD_SLUG, {
+      const task = await api.createTask(slugRef.current, {
         column_id: board.columns[0].id,
         title: 'New task',
         source: 'Manual',
@@ -595,6 +599,14 @@ export default function App() {
               e.target.value = ''
             }}
           />
+          {me?.email && (
+            <div className="hdr__user">
+              <span className="hdr__user-email" title={me.email}>{me.email}</span>
+              <a className="btn btn-ghost" href="/cdn-cgi/access/logout" style={{ fontSize: 12, minHeight: 30 }}>
+                Log out
+              </a>
+            </div>
+          )}
         </div>
       </header>
 

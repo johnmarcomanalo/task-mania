@@ -6,6 +6,12 @@ use App\Http\Controllers\Api\SourceController;
 use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
 
+// The Cloudflare build signs people in and gives each their own board; the
+// local setup has no login and one board, so the UI asks here first either way.
+Route::get('me', fn () => response()->json([
+    'data' => ['email' => null, 'name' => null, 'board_slug' => 'task-mania'],
+]));
+
 Route::get('boards', [BoardController::class, 'index']);
 Route::get('boards/{board}', [BoardController::class, 'show']);
 Route::get('boards/{board}/activity', [BoardController::class, 'activity']);
