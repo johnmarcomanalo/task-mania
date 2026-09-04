@@ -4,6 +4,7 @@ import { note } from '../db'
 import type { AppEnv } from '../env'
 import { invalid, notFound } from '../errors'
 import { findTask } from '../queries'
+import { assertRoom, charge, refund } from '../quota'
 import { idParam } from '../scope'
 import { fileJson, type FileRow } from '../serialize'
 import { MAX_FILES, MAX_FILE_BYTES, filesFrom, objectKey, putObject } from '../uploads'
@@ -26,6 +27,9 @@ files.post('/tasks/:id/files', async (c) => {
     if (f.size > MAX_FILE_BYTES) throw invalid(`files.${i}`, `The files.${i} may not be greater than 10240 kilobytes.`)
   })
 
+  const total = list.reduce((sum, f) => sum + f.size, 0)
+  await assertRoom(db, c.env, c.get('user').id, { bytes: total, files: list.length }, 'files')
+
   const made: FileRow[] = []
   for (const f of list) {
     const key = objectKey('attachments', f)
@@ -41,7 +45,10 @@ files.post('/tasks/:id/files', async (c) => {
     made.push(row!)
   }
 
-  await note(db, board.id, `Attached ${made.length} file(s): ${made.map((f) => f.name).join(', ')}`, task.id).run()
+  await db.batch([
+    note(db, board.id, `Attached ${made.length} file(s): ${made.map((f) => f.name).join(', ')}`, task.id),
+    charge(db, c.get('user').id, total, list.length),
+  ])
 
   return c.json({ data: made.map(fileJson) }, 201)
 })
@@ -59,6 +66,7 @@ files.delete('/task-files/:id', async (c) => {
   await db.batch([
     note(db, board.id, `Removed attachment ${file.name}`, file.task_id),
     db.prepare(`DELETE FROM task_files WHERE id = ?1`).bind(file.id),
+    refund(db, c.get('user').id, file.size, 1),
   ])
 
   return c.body(null, 204)

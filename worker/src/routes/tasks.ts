@@ -4,6 +4,7 @@ import { note, renumber, rows } from '../db'
 import type { AppEnv, Env } from '../env'
 import { invalid, notFound } from '../errors'
 import { activeSourceExists, findColumn, findTask, nextPosition, taskPayload } from '../queries'
+import { refund } from '../quota'
 import { idParam, ownBoard } from '../scope'
 import type { ColumnRow, FileRow } from '../serialize'
 import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSchema, type TaskUpdate } from '../validate'
@@ -194,11 +195,15 @@ tasks.delete('/tasks/:id', async (c) => {
   await Promise.all(files.map((f) => c.env.FILES.delete(f.path)))
 
   // The line outlives the task, so it carries no task id; older lines lose theirs via ON DELETE SET NULL.
-  await db.batch([
+  const statements = [
     note(db, board.id, `Deleted: ${task.title}`),
     db.prepare(`DELETE FROM tasks WHERE id = ?1`).bind(task.id),
     renumber(db, task.board_column_id),
-  ])
+  ]
+  if (files.length > 0) {
+    statements.push(refund(db, c.get('user').id, files.reduce((sum, f) => sum + f.size, 0), files.length))
+  }
+  await db.batch(statements)
 
   return c.body(null, 204)
 })

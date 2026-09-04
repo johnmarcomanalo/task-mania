@@ -7,6 +7,9 @@ export interface Env {
   ACCESS_AUD?: string
   /** Local development only: act as this email when no Access JWT is present. */
   ACCESS_DEV_EMAIL?: string
+  STORAGE_USER_MB?: string
+  STORAGE_USER_FILES?: string
+  STORAGE_TOTAL_MB?: string
 }
 
 export interface AuthUser {

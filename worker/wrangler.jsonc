@@ -20,7 +20,10 @@
   "vars": {
     "APP_TIMEZONE": "Asia/Manila",
     "ACCESS_TEAM_DOMAIN": "https://weathered-rain-8654.cloudflareaccess.com",
-    "ACCESS_AUD": "b266dac00d705dc3eece4416d0ce1a280b7c7215aa82507a98eb32db2835843c"
+    "ACCESS_AUD": "b266dac00d705dc3eece4416d0ce1a280b7c7215aa82507a98eb32db2835843c",
+    "STORAGE_USER_MB": "300",
+    "STORAGE_USER_FILES": "500",
+    "STORAGE_TOTAL_MB": "5120"
   },
   "observability": { "enabled": true }
 }

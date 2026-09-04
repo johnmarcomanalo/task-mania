@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { AppEnv } from '../env'
 import { invalid } from '../errors'
+import { assertRoom, charge } from '../quota'
 import { ownBoard } from '../scope'
 import { storageUrl } from '../serialize'
 import { IMAGE_MIMES, MAX_FILE_BYTES, filesFrom, objectKey, putObject, sniffImage } from '../uploads'
@@ -29,8 +30,12 @@ scan.post('/boards/:slug/scan', async (c) => {
   const kind = sniffImage(new Uint8Array(bytes))
   if (!kind || IMAGE_MIMES[kind] !== image.type) throw invalid('image', 'The image must be an image.')
 
+  const user = c.get('user')
+  await assertRoom(c.env.DB, c.env, user.id, { bytes: image.size, files: 1 }, 'image')
+
   const key = objectKey('screenshots', image)
-  await putObject(c.env.FILES, key, bytes, image.type, c.get('user').id, image.name)
+  await putObject(c.env.FILES, key, bytes, image.type, user.id, image.name)
+  await charge(c.env.DB, user.id, bytes.byteLength, 1).run()
 
   return c.json({
     screenshot: { path: key, url: storageUrl(key) },
