@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api } from '../api'
-import type { Column, Task } from '../types'
+import type { Task } from '../types'
 import { formatDay } from '../lib/dates'
 
 interface Props {
   slug: string
-  columns: Column[]
   todoColumnId: number
   onRestored: () => void
   notify: (text: string, tone?: 'info' | 'error') => void
@@ -107,7 +106,9 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
 
         {!loading && rows.length === 0 && (
           <p style={{ fontSize: 12, color: 'var(--color-neutral-500)' }}>
-            Nothing archived yet — tasks move here 30 days after they are done.
+            {debouncedQ
+              ? `No archived tasks match "${debouncedQ}".`
+              : 'Nothing archived yet — tasks move here 30 days after they are done.'}
           </p>
         )}
 

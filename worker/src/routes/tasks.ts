@@ -12,9 +12,6 @@ import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSc
 
 export const tasks = new Hono<AppEnv>()
 
-// zone(env) now lives in ../dates; re-exported so existing imports of it from here keep compiling.
-export { zone }
-
 type Fields = Record<string, string | number | null>
 
 /** Client field names → column names, as TaskController::payload(). Only keys that were sent. */

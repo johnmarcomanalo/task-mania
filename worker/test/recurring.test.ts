@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { todayIn } from '../src/dates'
 import { nextDue } from '../src/recur'
-import { ALICE, boardOf, columnOf, get, json, patch, post } from './helpers'
+import { boardIdOf, boardOf, columnOf, env, get, json, patch, post } from './helpers'
 
 const today = () => todayIn('Asia/Manila')
 
@@ -116,7 +116,34 @@ describe('repeat on completion', () => {
     const copy = (await tasksOf(board.slug)).find((t) => t.id !== task.id)!
     expect(copy.due).toBe(expectedNext('2026-10-01'))
   })
+
+  it('moving within Done (a raw-seeded done task with a rule) does not spawn and keeps the rule', async () => {
+    const board = await boardOf()
+    const boardId = await boardIdOf(board.slug)
+    const done = columnOf(board, 'done')
+    const id = await seedDoneWithRule(boardId, done, { freq: 'weekly', weekday: 4 }, today())
+
+    const res = await patch(`/api/tasks/${id}/move`, { column_id: done, position: 0 })
+    expect(res.status).toBe(200)
+
+    const all = await tasksOf(board.slug)
+    expect(all).toHaveLength(1)
+    expect(all[0].repeat).toEqual({ freq: 'weekly', weekday: 4 })
+  })
 })
+
+/** A done task with a repeat rule, planted directly with SQL (as archive.test.ts does for its fixtures). */
+async function seedDoneWithRule(boardId: number, columnId: number, rule: unknown, doneOn: string): Promise<number> {
+  const at = '2026-01-01T00:00:00.000Z'
+  const row = await env.DB
+    .prepare(
+      `INSERT INTO tasks (board_id, board_column_id, title, source, repeat, done_on, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7) RETURNING id`,
+    )
+    .bind(boardId, columnId, 'Weekly report', 'Manual', JSON.stringify(rule), doneOn, at)
+    .first<{ id: number }>()
+  return row!.id
+}
 
 function expectedNext(due: string, rule: any = { freq: 'weekly', weekday: 4 }) {
   const base = due > today() ? due : today()

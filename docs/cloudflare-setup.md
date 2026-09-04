@@ -171,7 +171,7 @@ The `kid` in that URL **is** the AUD tag, and the host is the team domain.
 | Let only certain people in | **Zero Trust → Access controls → Applications → task-mania… → Configure → Policies** → edit the policy: *Include* = **Emails** (a list) or **Emails ending in** `@arvinintl.com` instead of *Everyone* |
 | Change how long a login lasts | same app → *Configure* → session duration (default **24 hours**); global default at **Zero Trust → Access controls → Access settings** |
 | Add Google sign-in | **Zero Trust → Integrations → Identity providers → Add → Google** (needs a Google Cloud OAuth client), then enable it under the app's *Login methods* |
-| Change the schema | add `worker/migrations/0002_<what>.sql`; the next push applies it (`d1 migrations apply --remote` runs before `wrangler deploy`) |
+| Change the schema | add `worker/migrations/0004_<what>.sql`; the next push applies it (`d1 migrations apply --remote` runs before `wrangler deploy`) |
 | Change the date time zone | `APP_TIMEZONE` in `wrangler.jsonc`, then push |
 | Change the upload limits | STORAGE_* vars in wrangler.jsonc, then push |
 | Wipe everything | `npx wrangler d1 execute DB --remote --command "DELETE FROM users"` (cascades to boards, tasks, files, activity). R2 objects stay — empty the bucket from its page if wanted |

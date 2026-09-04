@@ -31,7 +31,7 @@ boards.get('/boards/:slug/activity', async (c) => {
 })
 
 /** Escape LIKE metacharacters so a search term matches its characters literally. */
-const escapeLike = (s: string) => s.replace(/[%_]/g, (ch) => `\\${ch}`)
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (ch) => `\\${ch}`)
 
 /** Archived tasks (done more than ARCHIVE_AFTER_DAYS ago), newest done_on first, searchable, paged by 50. */
 boards.get('/boards/:slug/archive', async (c) => {
@@ -40,7 +40,7 @@ boards.get('/boards/:slug/archive', async (c) => {
   const today = todayIn(zone(c.env))
   const cutoff = archiveCutoff(today)
   const q = (c.req.query('q') ?? '').trim().toLowerCase()
-  const page = Math.max(1, Number.parseInt(c.req.query('page') ?? '1', 10) || 1)
+  const page = Math.min(Math.max(1, Number.parseInt(c.req.query('page') ?? '1', 10) || 1), 10_000)
   const per = 50
   const like = `%${escapeLike(q)}%`
 

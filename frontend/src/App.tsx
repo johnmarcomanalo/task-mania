@@ -313,7 +313,7 @@ export default function App() {
   const visible = useMemo(() => applyFilters(searchFiltered, filters), [searchFiltered, filters])
   const filtersActive = isFiltersActive(filters)
 
-  const sources = board?.sources.map((s) => s.name) ?? []
+  const sources = Array.from(new Set(tasks.map((t) => t.source))).sort()
   const tags = Array.from(new Set(tasks.flatMap((t) => t.tags))).sort()
 
   const streak = useMemo(
@@ -754,7 +754,6 @@ export default function App() {
         {view === 'archive' && (
           <ArchiveView
             slug={slugRef.current}
-            columns={board.columns}
             todoColumnId={(board.columns.find((c) => c.key === 'todo') ?? board.columns[0]).id}
             onRestored={() => void refreshQuiet()}
             notify={notify}

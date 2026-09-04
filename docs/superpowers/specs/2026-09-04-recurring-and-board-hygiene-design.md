@@ -127,8 +127,9 @@ the client calculation when present.
 
 ## Validation and errors
 
-Same shapes as everything else: `422 { message, errors }` with `repeat`,
-`repeat.weekday`, `repeat.day`, `repeat.nth` keys.
+Same shapes as everything else: `422 { message, errors }`. A bad rule answers
+`422` keyed `repeat` (one union error); unknown keys inside a rule are
+dropped.
 
 ## Tests
 
