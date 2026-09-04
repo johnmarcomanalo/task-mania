@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api } from '../api'
 import type { Column, Task } from '../types'
-import { formatWhen } from '../lib/dates'
+import { formatDay } from '../lib/dates'
 
 interface Props {
   slug: string
@@ -17,19 +17,29 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<Task[]>([])
   const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
+  // Starts true: the mount effect below fetches immediately, so there is no
+  // render in between where "no rows yet" could be mistaken for "no rows ever".
+  const [loading, setLoading] = useState(true)
+
+  // Guards against an in-flight page ("Load more") landing after a newer
+  // search has already replaced `rows` — only the most recent request may
+  // write back into state.
+  const reqId = useRef(0)
 
   const fetchPage = useCallback(async (query: string, pageNum: number, append: boolean) => {
+    const id = ++reqId.current
     setLoading(true)
     try {
       const data = await api.archive(slug, query, pageNum)
+      if (id !== reqId.current) return
       setRows((prev) => (append ? [...prev, ...data.tasks] : data.tasks))
       setTotal(data.total)
       setPage(data.page)
     } catch (e) {
+      if (id !== reqId.current) return
       notify(e instanceof ApiError ? e.message : 'Could not load the archive.', 'error')
     } finally {
-      setLoading(false)
+      if (id === reqId.current) setLoading(false)
     }
   }, [slug, notify])
 
@@ -40,12 +50,11 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
   }, [q])
 
   // Page 1 loads at once: on mount `debouncedQ` already equals its initial '',
-  // so this fires right away; later it re-fires only once the search settles.
-  // The 0 ms timer defers the fetch (and its setState) past this render's
-  // commit, same as the rest of the app does for its own load-on-mount effect.
+  // so this fires on the first render, not behind the search debounce; later
+  // it re-fires only once the search settles.
   useEffect(() => {
-    const timer = window.setTimeout(() => void fetchPage(debouncedQ, 1, false), 0)
-    return () => window.clearTimeout(timer)
+    // oxlint-disable-next-line react/set-state-in-effect -- loading page 1 as soon as this view opens or the search settles is the whole point of this effect
+    void fetchPage(debouncedQ, 1, false)
   }, [debouncedQ, fetchPage])
 
   async function restore(task: Task) {
@@ -78,7 +87,7 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {rows.map((t) => (
             <div className="archrow" key={t.id}>
-              <span className="archrow__when">{t.done_on ? formatWhen(t.done_on) : ''}</span>
+              <span className="archrow__when">{t.done_on ? formatDay(t.done_on) : ''}</span>
               <span>{t.title}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-neutral-500)' }}>
                 <span>{t.sender ?? t.source}</span>
@@ -97,7 +106,7 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
           ))}
         </div>
 
-        {rows.length === 0 && !loading && (
+        {!loading && rows.length === 0 && (
           <p style={{ fontSize: 12, color: 'var(--color-neutral-500)' }}>
             Nothing archived yet — tasks move here 30 days after they are done.
           </p>

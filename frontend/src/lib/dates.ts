@@ -38,6 +38,21 @@ export function dueLabel(due: string): string {
   return due.slice(5)
 }
 
+/**
+ * Formats a date-only 'YYYY-MM-DD' string on its own terms — never through
+ * `new Date(ymd)`, which parses as UTC midnight and then renders in the
+ * viewer's local zone, landing on the previous day west of UTC.
+ */
+export function formatDay(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 export function formatWhen(isoString: string): string {
   const d = new Date(isoString)
   const diff = Date.now() - d.getTime()
