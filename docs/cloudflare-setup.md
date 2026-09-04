@@ -171,6 +171,7 @@ The `kid` in that URL **is** the AUD tag, and the host is the team domain.
 | Add Google sign-in | **Zero Trust → Integrations → Identity providers → Add → Google** (needs a Google Cloud OAuth client), then enable it under the app's *Login methods* |
 | Change the schema | add `worker/migrations/0002_<what>.sql`; the next push applies it (`d1 migrations apply --remote` runs before `wrangler deploy`) |
 | Change the date time zone | `APP_TIMEZONE` in `wrangler.jsonc`, then push |
+| Change the upload limits | STORAGE_* vars in wrangler.jsonc, then push |
 | Wipe everything | `npx wrangler d1 execute DB --remote --command "DELETE FROM users"` (cascades to boards, tasks, files, activity). R2 objects stay — empty the bucket from its page if wanted |
 | Turn Access off for everyone (danger) | the Worker's **Access** tab. Do not: the API then answers 401 for everybody anyway, but the static UI becomes public |
 
@@ -205,7 +206,7 @@ folder to start over locally.
 |---|---|---|
 | Workers | 100,000 requests/day; 10 ms CPU per request; static assets up to 20,000 files, 25 MiB each | requests are refused until the next day (UTC) |
 | D1 | 5 million rows read/day, 100,000 rows written/day, 5 GB total | queries stop until the next day; storage needs deleting or a paid plan |
-| R2 | 10 GB-month storage, 1 M Class A (write) and 10 M Class B (read) operations/month, **egress free** | standard pricing applies beyond that; a payment method is on file because R2 required it |
+| R2 | 10 GB-month storage, 1 M Class A (write) and 10 M Class B (read) operations/month, **egress free** | standard pricing applies beyond that; a payment method is on file because R2 required it — the app refuses uploads past 300 MB/500 files per person and 5 GB in total, so the free tier cannot be exceeded by uploads |
 | Access / Zero Trust | 50 users per month | new sign-ins are refused until the plan is upgraded ($7/user/month) |
 | Workers Builds | included; builds run one at a time | — |
 

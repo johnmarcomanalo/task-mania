@@ -84,6 +84,7 @@ You need a free Cloudflare account and this repository on GitHub.
   users a month.
 - **Schema change**: add `migrations/0002_<what>.sql`; the next deploy applies it.
 - **Time zone**: `APP_TIMEZONE` in `wrangler.jsonc` vars (default `Asia/Manila`) decides which calendar day `captured`/`done_on` and the streak use.
+- **Storage limits**: STORAGE_USER_MB / STORAGE_USER_FILES / STORAGE_TOTAL_MB in wrangler.jsonc vars (defaults 300 MB and 500 files per person, 5 GB in total, under the 10 GB R2 free tier). Uploads past a limit answer 422 with the reason; nothing is ever billed by the app itself. Usage per user: GET /api/me → storage.
 - **Start over**: `npx wrangler d1 execute DB --remote --command "DELETE FROM users"`
   cascades to boards, tasks, files and activity rows. Objects in R2 stay;
   empty the bucket from its page if you want them gone too.
