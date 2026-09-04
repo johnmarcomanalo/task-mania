@@ -27,6 +27,7 @@ export function payload(data: TaskUpdate): Fields {
   if (data.quote !== undefined) out.quote = data.quote
   if (data.attachments !== undefined) out.attachments_note = data.attachments
   if (data.tags !== undefined) out.tags = JSON.stringify(data.tags)
+  if (data.repeat !== undefined) out.repeat = data.repeat === null ? null : JSON.stringify(data.repeat)
   return out
 }
 
@@ -59,9 +60,9 @@ export async function insertTask(
   const row = await db
     .prepare(
       `INSERT INTO tasks (board_id, board_column_id, title, source, sender, due_date, priority, quote,
-                          attachments_note, tags, screenshot_path, captured_on, done_on, position,
+                          attachments_note, tags, screenshot_path, captured_on, done_on, repeat, position,
                           created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?16)
        RETURNING id`,
     )
     .bind(
@@ -78,6 +79,7 @@ export async function insertTask(
       fields.screenshot_path ?? null,
       today,
       column.is_done ? today : null,
+      fields.repeat ?? null,
       await nextPosition(db, column.id),
       nowIso(),
     )

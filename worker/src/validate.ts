@@ -3,6 +3,7 @@ import { z, type ZodType } from 'zod'
 import { isValidDate } from './dates'
 import { PRIORITIES, SOURCE_MAX_NAME } from './defaults'
 import { ValidationError } from './errors'
+import { repeatSchema } from './recur'
 
 const text = (field: string, max: number) =>
   z.string(`The ${field} must be a string.`).max(max, `The ${field} may not be greater than ${max} characters.`)
@@ -36,6 +37,7 @@ const taskFields = {
   quote: optionalText('quote', 5000),
   attachments: optionalText('attachments', 255),
   tags,
+  repeat: repeatSchema.nullable().optional(),
 }
 
 // A missing title is "required", not "must be a string" — the type error carries that message.
@@ -65,6 +67,7 @@ const bulkRow = z.object({
   quote: taskFields.quote,
   attachments: taskFields.attachments,
   tags,
+  repeat: taskFields.repeat,
 })
 
 export const bulkSchema = z.object({

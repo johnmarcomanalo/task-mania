@@ -38,6 +38,7 @@ describe('create task', () => {
       shot: null,
       captured: today(),
       done_on: null,
+      repeat: null,
       position: 0,
       files: [],
       history: [{ id: expect.any(Number), task_id: task.id, text: 'Created in Inbox', at: expect.any(String) }],

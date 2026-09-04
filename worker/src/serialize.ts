@@ -1,3 +1,5 @@
+import { parseRule } from './recur'
+
 export interface ColumnRow {
   id: number; board_id: number; key: string; name: string; position: number; is_done: number
   created_at: string; updated_at: string
@@ -11,7 +13,7 @@ export interface TaskRow {
   sender: string | null; due_date: string | null; priority: 'high' | 'normal' | 'low'
   quote: string | null; attachments_note: string | null; tags: string | null
   screenshot_path: string | null; captured_on: string | null; done_on: string | null
-  position: number; created_at: string; updated_at: string
+  repeat: string | null; position: number; created_at: string; updated_at: string
 }
 export interface FileRow {
   id: number; task_id: number; name: string; mime: string | null; size: number; path: string
@@ -74,6 +76,7 @@ export function taskJson(t: TaskRow, extra: { columnKey: string; files: FileRow[
     shot: t.screenshot_path ? storageUrl(t.screenshot_path) : null,
     captured: t.captured_on,
     done_on: t.done_on,
+    repeat: parseRule(t.repeat),
     position: t.position,
     files: extra.files.map(fileJson),
     // Present on single-task replies only, like Laravel's whenLoaded('activities').
