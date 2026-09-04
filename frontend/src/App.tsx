@@ -740,7 +740,11 @@ export default function App() {
         {view === 'log' && (
           <LogView
             slug={slugRef.current}
-            onOpen={(id) => { setView('board'); setOpenId(id) }}
+            onOpen={(id) => {
+              setView('board')
+              if (tasks.some((t) => t.id === id)) setOpenId(id)
+              else notify('That task is in the Archive.')
+            }}
             notify={notify}
           />
         )}

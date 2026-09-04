@@ -359,7 +359,11 @@ body { margin: 0; background: var(--color-bg); }
   white-space: nowrap;
 }
 .logrow__task {
-  justify-content: flex-start;
+  font-size: 12px;
+  font-family: var(--font-body);
+  padding: 0;
+  display: block;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
