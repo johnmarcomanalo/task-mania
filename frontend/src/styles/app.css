@@ -346,7 +346,7 @@ body { margin: 0; background: var(--color-bg); }
 }
 .logrow {
   display: grid;
-  grid-template-columns: 48px minmax(0, 220px) 1fr;
+  grid-template-columns: 64px minmax(0, 220px) 1fr;
   gap: var(--space-3);
   align-items: baseline;
   padding: var(--space-3) 0;
@@ -356,6 +356,7 @@ body { margin: 0; background: var(--color-bg); }
   font-size: 10px;
   color: var(--color-neutral-500);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .logrow__task {
   justify-content: flex-start;
