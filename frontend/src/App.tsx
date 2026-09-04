@@ -23,15 +23,20 @@ import { DetailPanel } from './components/DetailPanel'
 import { ScanReview } from './components/ScanReview'
 import { SourceManager } from './components/SourceManager'
 import { FilterBar } from './components/FilterBar'
+import { ArchiveView } from './components/ArchiveView'
 
 import './styles/nocturne.css'
 import './styles/app.css'
 
-const VIEWS: { id: View; label: string }[] = [
-  { id: 'board', label: 'Board' },
-  { id: 'due', label: 'Deadline' },
-  { id: 'log', label: 'Log' },
-]
+/** Archive is a fourth view, but only on a backend that advertises it. */
+function viewsFor(hasArchive: boolean): { id: View; label: string }[] {
+  const views: { id: View; label: string }[] = [
+    { id: 'board', label: 'Board' },
+    { id: 'due', label: 'Deadline' },
+    { id: 'log', label: 'Log' },
+  ]
+  return hasArchive ? [...views, { id: 'archive', label: 'Archive' }] : views
+}
 
 /* ---------------- pure board helpers ---------------- */
 
@@ -568,7 +573,7 @@ export default function App() {
         </div>
 
         <div className="views" role="group" aria-label="View">
-          {VIEWS.map((v) => (
+          {viewsFor(!!board.features?.archive).map((v) => (
             <button
               key={v.id}
               className="views__opt"
@@ -744,6 +749,16 @@ export default function App() {
               )}
             </div>
           </div>
+        )}
+
+        {view === 'archive' && (
+          <ArchiveView
+            slug={slugRef.current}
+            columns={board.columns}
+            todoColumnId={(board.columns.find((c) => c.key === 'todo') ?? board.columns[0]).id}
+            onRestored={() => void refreshQuiet()}
+            notify={notify}
+          />
         )}
 
         {openTask && (

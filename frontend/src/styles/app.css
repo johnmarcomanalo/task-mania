@@ -351,6 +351,17 @@ body { margin: 0; background: var(--color-bg); }
 }
 .logrow__text { flex: 1; font-size: 12px; line-height: 1.45; color: var(--color-neutral-300); }
 
+.archrow {
+  display: grid;
+  grid-template-columns: 84px 1fr auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-neutral-200);
+  font-size: 12px;
+}
+.archrow__when { color: var(--color-neutral-500); font-variant-numeric: tabular-nums; }
+
 /* ---------- detail panel ---------- */
 .detail {
   flex: none;
