@@ -1,4 +1,4 @@
-import type { ArchivePage, Board, Priority, RepeatRule, ScanResult, Source, Task, TaskFile } from './types'
+import type { Activity, ArchivePage, Board, Priority, RepeatRule, ScanResult, Source, Task, TaskFile } from './types'
 
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api').replace(/\/$/, '')
 
@@ -87,6 +87,8 @@ export const api = {
 
   archive: (slug: string, q: string, page: number) =>
     request<ArchivePage>(`/boards/${encodeURIComponent(slug)}/archive?q=${encodeURIComponent(q)}&page=${page}`),
+
+  activity: (slug: string) => request<Activity[]>(`/boards/${encodeURIComponent(slug)}/activity`),
 
   createTask: (slug: string, body: TaskInput) =>
     request<Task>(`/boards/${encodeURIComponent(slug)}/tasks`, {

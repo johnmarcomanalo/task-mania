@@ -15,7 +15,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
 import { ApiError, api, type BulkRow, type Me, type TaskInput } from './api'
 import type { Board, ScanResult, ScanRow, Task, TaskFile, View } from './types'
-import { dueMeta, formatWhen, shiftDay, streakInfo } from './lib/dates'
+import { dueMeta, shiftDay, streakInfo } from './lib/dates'
 import { applyFilters, isClosed, isFiltersActive, NO_FILTERS, type Filters } from './lib/filters'
 import { Lane } from './components/Lane'
 import { TaskCardBody } from './components/TaskCard'
@@ -24,6 +24,7 @@ import { ScanReview } from './components/ScanReview'
 import { SourceManager } from './components/SourceManager'
 import { FilterBar } from './components/FilterBar'
 import { ArchiveView } from './components/ArchiveView'
+import { LogView } from './components/LogView'
 
 import './styles/nocturne.css'
 import './styles/app.css'
@@ -106,7 +107,7 @@ export default function App() {
   const [view, setView] = useState<View>('board')
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
-  const [showOlderDone, setShowOlderDone] = useState(false)
+  const [showOlder, setShowOlder] = useState<Record<number, boolean>>({})
   const [openId, setOpenId] = useState<number | null>(null)
   const [draggingId, setDraggingId] = useState<number | null>(null)
 
@@ -672,14 +673,14 @@ export default function App() {
                     <Lane
                       key={column.id}
                       column={column}
-                      tasks={showOlderDone ? shown : recent}
+                      tasks={showOlder[column.id] ? shown : recent}
                       hiddenCount={total - shown.length}
                       selectedId={openId}
                       onOpen={(t) => setOpenId(t.id)}
                       onAdd={addTask}
                       olderCount={shown.length - recent.length}
-                      showingOlder={showOlderDone}
-                      onShowOlder={() => setShowOlderDone((v) => !v)}
+                      showingOlder={!!showOlder[column.id]}
+                      onShowOlder={() => setShowOlder((v) => ({ ...v, [column.id]: !v[column.id] }))}
                     />
                   )
                 }
@@ -737,22 +738,11 @@ export default function App() {
         )}
 
         {view === 'log' && (
-          <div className="listview">
-            <div className="listview__inner" style={{ maxWidth: 640 }}>
-              <h1 className="listview__title">Activity log</h1>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {board.activity.map((a) => (
-                  <div className="logrow" key={a.id}>
-                    <span className="logrow__when">{formatWhen(a.at)}</span>
-                    <span className="logrow__text">{a.text}</span>
-                  </div>
-                ))}
-              </div>
-              {board.activity.length === 0 && (
-                <p style={{ fontSize: 12, color: 'var(--color-neutral-500)' }}>Nothing recorded yet.</p>
-              )}
-            </div>
-          </div>
+          <LogView
+            slug={slugRef.current}
+            onOpen={(id) => { setView('board'); setOpenId(id) }}
+            notify={notify}
+          />
         )}
 
         {view === 'archive' && (

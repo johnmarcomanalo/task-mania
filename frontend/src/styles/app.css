@@ -337,20 +337,33 @@ body { margin: 0; background: var(--color-bg); }
 .duerow__meta { font-size: 10.5px; color: var(--color-neutral-500); }
 .duerow__col { font-size: 10.5px; color: var(--color-neutral-500); min-width: 78px; text-align: right; }
 
+.logday {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--color-neutral-500);
+  margin: var(--space-4) 0 var(--space-2);
+}
 .logrow {
-  display: flex;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: 48px minmax(0, 220px) 1fr;
+  gap: var(--space-3);
+  align-items: baseline;
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-divider);
-  align-items: baseline;
 }
 .logrow__when {
   font-size: 10px;
   color: var(--color-neutral-500);
-  min-width: 88px;
   font-variant-numeric: tabular-nums;
 }
-.logrow__text { flex: 1; font-size: 12px; line-height: 1.45; color: var(--color-neutral-300); }
+.logrow__task {
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logrow__text { font-size: 12px; line-height: 1.45; color: var(--color-neutral-300); }
 
 .archrow {
   display: grid;
