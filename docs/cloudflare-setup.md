@@ -162,6 +162,8 @@ The `kid` in that URL **is** the AUD tag, and the host is the team domain.
 |---|---|
 | Open the app | https://task-mania.johnmarcomanalo09.workers.dev → email → PIN from the email (check spam; sender is `notify.cloudflare.com`) |
 | Log out | the **Log out** link in the header (it goes to `/cdn-cgi/access/logout`) |
+| Make a task repeat | open it → Repeat → Weekly (pick the day) or Monthly (a date, or e.g. 2nd Monday); the next copy appears in To Do when you finish it |
+| Find old finished tasks | Archive view (tasks done > 30 days ago); Restore sends them back to To Do |
 | Deploy a change | `git push origin main` — nothing else |
 | See errors / logs | **Workers & Pages → task-mania → Logs** (or, in `worker/`: `npx wrangler tail`) |
 | Look at the data | **Storage & databases → D1 SQL database → task-mania → Console** (type SQL). Or `npx wrangler d1 execute DB --remote --command "SELECT email, last_seen_at FROM users"` |
