@@ -13,6 +13,7 @@ interface Props {
 
 export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
   const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<Task[]>([])
   const [total, setTotal] = useState(0)
@@ -32,11 +33,20 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
     }
   }, [slug, notify])
 
-  // Page 1 on mount, and again whenever the search box settles.
+  // Only the search box is debounced — typing settles here before it drives a fetch.
   useEffect(() => {
-    const timer = window.setTimeout(() => void fetchPage(q, 1, false), 300)
+    const timer = window.setTimeout(() => setDebouncedQ(q), 300)
     return () => window.clearTimeout(timer)
-  }, [q, fetchPage])
+  }, [q])
+
+  // Page 1 loads at once: on mount `debouncedQ` already equals its initial '',
+  // so this fires right away; later it re-fires only once the search settles.
+  // The 0 ms timer defers the fetch (and its setState) past this render's
+  // commit, same as the rest of the app does for its own load-on-mount effect.
+  useEffect(() => {
+    const timer = window.setTimeout(() => void fetchPage(debouncedQ, 1, false), 0)
+    return () => window.clearTimeout(timer)
+  }, [debouncedQ, fetchPage])
 
   async function restore(task: Task) {
     try {
@@ -97,7 +107,7 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
           <button
             className="btn btn-ghost"
             disabled={loading}
-            onClick={() => void fetchPage(q, page + 1, true)}
+            onClick={() => void fetchPage(debouncedQ, page + 1, true)}
           >
             {loading ? 'Loading…' : 'Load more'}
           </button>

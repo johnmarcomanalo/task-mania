@@ -357,7 +357,7 @@ body { margin: 0; background: var(--color-bg); }
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-neutral-200);
+  border-bottom: 1px solid var(--color-divider);
   font-size: 12px;
 }
 .archrow__when { color: var(--color-neutral-500); font-variant-numeric: tabular-nums; }
