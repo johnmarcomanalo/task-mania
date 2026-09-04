@@ -16,12 +16,13 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { ApiError, api, type BulkRow, type Me, type TaskInput } from './api'
 import type { Board, ScanResult, ScanRow, Task, TaskFile, View } from './types'
 import { dueMeta, formatWhen, shiftDay, streakInfo } from './lib/dates'
+import { applyFilters, isFiltersActive, NO_FILTERS, type Filters } from './lib/filters'
 import { Lane } from './components/Lane'
 import { TaskCardBody } from './components/TaskCard'
 import { DetailPanel } from './components/DetailPanel'
 import { ScanReview } from './components/ScanReview'
 import { SourceManager } from './components/SourceManager'
-import { FilterBar, NO_FILTERS, applyFilters, type Filters } from './components/FilterBar'
+import { FilterBar } from './components/FilterBar'
 
 import './styles/nocturne.css'
 import './styles/app.css'
@@ -305,8 +306,7 @@ export default function App() {
   }, [tasks, query])
 
   const visible = useMemo(() => applyFilters(searchFiltered, filters), [searchFiltered, filters])
-  const filtersActive =
-    filters.urgent || filters.overdue || filters.week || filters.source !== '' || filters.tag !== ''
+  const filtersActive = isFiltersActive(filters)
 
   const sources = board?.sources.map((s) => s.name) ?? []
   const tags = Array.from(new Set(tasks.flatMap((t) => t.tags))).sort()

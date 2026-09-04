@@ -1,37 +1,4 @@
-import type { Task } from '../types'
-import { dueMeta, today } from '../lib/dates'
-
-export interface Filters {
-  urgent: boolean
-  overdue: boolean
-  week: boolean
-  source: string
-  tag: string
-}
-
-/**
- * NO_FILTERS and applyFilters live here, not in a separate module, so App.tsx
- * imports the filter type, its default, and its predicate from one file
- * alongside the bar that edits it.
- */
-// oxlint-disable-next-line react/only-export-components
-export const NO_FILTERS: Filters = { urgent: false, overdue: false, week: false, source: '', tag: '' }
-
-/** Narrows a task list by the quick-filter chips and selects; combines with the search box (AND). */
-// oxlint-disable-next-line react/only-export-components
-export function applyFilters(tasks: Task[], f: Filters): Task[] {
-  return tasks.filter((t) => {
-    if (f.urgent && t.priority !== 'high') return false
-    if (f.overdue && !(t.due && t.due < today() && !t.done_on)) return false
-    if (f.week) {
-      const tone = dueMeta(t.due)?.tone
-      if (t.done_on || (tone !== 'now' && tone !== 'soon')) return false
-    }
-    if (f.source && t.source !== f.source) return false
-    if (f.tag && !t.tags.includes(f.tag)) return false
-    return true
-  })
-}
+import { NO_FILTERS, isFiltersActive, type Filters } from '../lib/filters'
 
 interface Props {
   value: Filters
@@ -41,7 +8,7 @@ interface Props {
 }
 
 export function FilterBar({ value, onChange, sources, tags }: Props) {
-  const active = value.urgent || value.overdue || value.week || value.source !== '' || value.tag !== ''
+  const active = isFiltersActive(value)
 
   return (
     <div className="filterbar">
