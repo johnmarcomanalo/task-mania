@@ -47,7 +47,18 @@ export async function checkRefs(
   return column
 }
 
-/** Insert at the end of the column; captured today, done today when the column is the done lane. */
+/** A column that closes a task, either by completing it or by cancelling it. */
+export const isTerminal = (c: ColumnRow) => c.is_done === 1 || c.is_cancelled === 1
+
+/** The two closing dates a task carries in a column: kept when already set, cleared when leaving. */
+export function closedDates(column: ColumnRow, task: Pick<TaskRow, 'done_on' | 'cancelled_on'> | null, today: string) {
+  return {
+    done_on: column.is_done ? (task?.done_on ?? today) : null,
+    cancelled_on: column.is_cancelled ? (task?.cancelled_on ?? today) : null,
+  }
+}
+
+/** Insert at the end of the column; captured today, closed today when the column is terminal. */
 export async function insertTask(
   db: D1Database,
   tz: string,
@@ -56,12 +67,13 @@ export async function insertTask(
   fields: Fields,
 ): Promise<number> {
   const today = todayIn(tz)
+  const dates = closedDates(column, null, today)
   const row = await db
     .prepare(
       `INSERT INTO tasks (board_id, board_column_id, title, source, sender, due_date, priority, quote,
-                          attachments_note, tags, screenshot_path, captured_on, done_on, repeat, position,
-                          created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?16)
+                          attachments_note, tags, screenshot_path, captured_on, done_on, cancelled_on, repeat,
+                          position, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?17)
        RETURNING id`,
     )
     .bind(
@@ -77,7 +89,8 @@ export async function insertTask(
       fields.tags ?? null,
       fields.screenshot_path ?? null,
       today,
-      column.is_done ? today : null,
+      dates.done_on,
+      dates.cancelled_on,
       fields.repeat ?? null,
       await nextPosition(db, column.id),
       nowIso(),
@@ -166,8 +179,12 @@ tasks.patch('/tasks/:id', async (c) => {
 
   const statements: D1PreparedStatement[] = []
   const movedTo = 'board_column_id' in changes ? column : null
-  if (movedTo) changes.done_on = movedTo.is_done ? todayIn(zone(c.env)) : null
   const before = movedTo ? await findColumn(db, board.id, task.board_column_id) : null
+  if (movedTo) {
+    const dates = closedDates(movedTo, task, todayIn(zone(c.env)))
+    changes.done_on = dates.done_on
+    changes.cancelled_on = dates.cancelled_on
+  }
 
   const keys = Object.keys(changes)
   statements.push(
@@ -178,13 +195,13 @@ tasks.patch('/tasks/:id', async (c) => {
       )
       .bind(...keys.map((k) => changes[k]), nowIso(), task.id),
   )
-  if (movedTo) statements.push(note(db, board.id, `Moved to ${movedTo.name}`, task.id))
+  if (movedTo) statements.push(note(db, board.id, `Moved: ${before!.name} → ${movedTo.name}`, task.id))
   for (const [field, line] of Object.entries(LINES)) {
     if (field in changes) statements.push(note(db, board.id, line, task.id))
   }
   await db.batch(statements)
 
-  if (movedTo?.is_done && !before?.is_done) {
+  if (movedTo && isTerminal(movedTo) && !isTerminal(before!)) {
     await spawnNext(db, c.env, board.id, { ...task, ...changes } as TaskRow)
   }
 
@@ -208,7 +225,8 @@ tasks.patch('/tasks/:id/move', async (c) => {
   const from = task.board_column_id
   const to = column.id
   const target = data.position
-  const doneOn = column.is_done ? (task.done_on ?? todayIn(zone(c.env))) : null
+  const source = to !== from ? (await findColumn(db, board.id, from))! : column
+  const dates = closedDates(column, task, todayIn(zone(c.env)))
 
   const statements = [
     db
@@ -218,14 +236,17 @@ tasks.patch('/tasks/:id/move', async (c) => {
       .prepare(`UPDATE tasks SET position = position + 1 WHERE board_column_id = ?1 AND position >= ?2 AND id <> ?3`)
       .bind(to, target, task.id),
     db
-      .prepare(`UPDATE tasks SET board_column_id = ?1, position = ?2, done_on = ?3, updated_at = ?4 WHERE id = ?5`)
-      .bind(to, target, doneOn, nowIso(), task.id),
+      .prepare(
+        `UPDATE tasks SET board_column_id = ?1, position = ?2, done_on = ?3, cancelled_on = ?4, updated_at = ?5
+          WHERE id = ?6`,
+      )
+      .bind(to, target, dates.done_on, dates.cancelled_on, nowIso(), task.id),
     renumber(db, from),
   ]
-  if (to !== from) statements.push(renumber(db, to), note(db, board.id, `Moved to ${column.name}`, task.id))
+  if (to !== from) statements.push(renumber(db, to), note(db, board.id, `Moved: ${source.name} → ${column.name}`, task.id))
   await db.batch(statements)
 
-  if (to !== from && column.is_done) await spawnNext(db, c.env, board.id, task)
+  if (to !== from && isTerminal(column) && !isTerminal(source)) await spawnNext(db, c.env, board.id, task)
 
   return c.json({ data: await taskPayload(db, board.id, task.id, true) })
 })

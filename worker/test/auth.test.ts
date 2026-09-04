@@ -18,11 +18,12 @@ describe('dev bypass', () => {
     expect(second.board_slug).toBe(first.board_slug)
 
     const cols = await env.DB.prepare(
-      `SELECT c.key, c.is_done FROM board_columns c JOIN boards b ON b.id = c.board_id
+      `SELECT c.key, c.is_done, c.is_cancelled FROM board_columns c JOIN boards b ON b.id = c.board_id
         WHERE b.slug = ?1 ORDER BY c.position`,
-    ).bind(first.board_slug).all<{ key: string; is_done: number }>()
-    expect(cols.results.map((c) => c.key)).toEqual(['inbox', 'todo', 'doing', 'wait', 'review', 'done'])
-    expect(cols.results.map((c) => c.is_done)).toEqual([0, 0, 0, 0, 0, 1])
+    ).bind(first.board_slug).all<{ key: string; is_done: number; is_cancelled: number }>()
+    expect(cols.results.map((c) => c.key)).toEqual(['inbox', 'todo', 'doing', 'wait', 'review', 'done', 'cancelled'])
+    expect(cols.results.map((c) => c.is_done)).toEqual([0, 0, 0, 0, 0, 1, 0])
+    expect(cols.results.map((c) => c.is_cancelled)).toEqual([0, 0, 0, 0, 0, 0, 1])
 
     const sources = await env.DB.prepare(
       `SELECT s.name FROM sources s JOIN boards b ON b.id = s.board_id WHERE b.slug = ?1 ORDER BY s.position`,

@@ -46,7 +46,7 @@ describe('move', () => {
     const moved = (await json(res)).data
     expect(moved.column_key).toBe('todo')
     expect(moved.position).toBe(1)
-    expect(moved.history[0].text).toBe('Moved to To Do')
+    expect(moved.history[0].text).toBe('Moved: Inbox → To Do')
 
     expect(await lanes()).toMatchObject({ inbox: ['A', 'C'], todo: ['X', 'B', 'Y'] })
     expect(await positions()).toMatchObject({ inbox: [0, 1], todo: [0, 1, 2] })

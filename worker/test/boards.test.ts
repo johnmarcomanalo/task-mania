@@ -16,8 +16,9 @@ describe('boards', () => {
     expect(board.name).toBe('Task Mania')
     expect(board.priorities).toEqual(['high', 'normal', 'low'])
     expect(board.scan_enabled).toBe(false)
-    expect(board.columns.map((c) => c.key)).toEqual(['inbox', 'todo', 'doing', 'wait', 'review', 'done'])
+    expect(board.columns.map((c) => c.key)).toEqual(['inbox', 'todo', 'doing', 'wait', 'review', 'done', 'cancelled'])
     expect(board.columns[5]).toMatchObject({ name: 'Done', position: 5, is_done: true })
+    expect(board.columns[6]).toMatchObject({ name: 'Cancelled', position: 6, is_done: false, is_cancelled: true })
     expect(board.sources.map((s) => s.name)).toEqual([
       'Viber', 'Email', 'Messenger', 'WhatsApp', 'Teams', 'SMS', 'Slack', 'Manual',
     ])

@@ -10,6 +10,17 @@ const shift = (ymd: string, days: number) => {
 /** Tasks done before this date are archived. */
 export const archiveCutoff = (today: string) => shift(today, -ARCHIVE_AFTER_DAYS)
 
+/**
+ * True when a task closed (Done or Cancelled) before the cutoff — old enough
+ * to leave the board. `alias` prefixes the columns for a joined query (e.g.
+ * `'t'`), and `cutoff` is the bound-parameter placeholder to compare against
+ * (e.g. `'?2'`), reused for both dates.
+ */
+export function archivedSql(alias: string, cutoff: string): string {
+  const p = alias ? `${alias}.` : ''
+  return `((${p}done_on IS NOT NULL AND ${p}done_on < ${cutoff}) OR (${p}cancelled_on IS NOT NULL AND ${p}cancelled_on < ${cutoff}))`
+}
+
 export interface Streak { streak: number; done_today: number; week: { label: string; count: number }[] }
 
 /** frontend/src/lib/dates.ts#streakInfo, on the server, over every task of the board. */

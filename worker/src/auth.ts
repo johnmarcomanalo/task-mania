@@ -93,10 +93,10 @@ function seedStatements(db: D1Database, userId: number, at: string): D1PreparedS
     ...DEFAULT_COLUMNS.map((c, i) =>
       db
         .prepare(
-          `INSERT INTO board_columns (board_id, key, name, position, is_done, created_at, updated_at)
-           VALUES (${board}, ?2, ?3, ?4, ?5, ?6, ?6)`,
+          `INSERT INTO board_columns (board_id, key, name, position, is_done, is_cancelled, created_at, updated_at)
+           VALUES (${board}, ?2, ?3, ?4, ?5, ?6, ?7, ?7)`,
         )
-        .bind(userId, c.key, c.name, i, c.is_done ? 1 : 0, at),
+        .bind(userId, c.key, c.name, i, c.is_done ? 1 : 0, c.is_cancelled ? 1 : 0, at),
     ),
     ...DEFAULT_SOURCES.map((name, i) =>
       db

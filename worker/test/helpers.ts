@@ -40,7 +40,7 @@ export interface BoardJson {
   sources: { id: number; name: string; position: number; is_archived: boolean }[]
   priorities: string[]
   scan_enabled: boolean
-  columns: { id: number; key: string; name: string; position: number; is_done: boolean }[]
+  columns: { id: number; key: string; name: string; position: number; is_done: boolean; is_cancelled: boolean }[]
   tasks: Record<string, unknown>[]
   activity: { id: number; task_id: number | null; text: string; at: string }[]
 }

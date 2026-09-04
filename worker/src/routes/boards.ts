@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { todayIn, zone } from '../dates'
 import { rows } from '../db'
 import type { AppEnv } from '../env'
-import { archiveCutoff } from '../hygiene'
+import { archivedSql, archiveCutoff } from '../hygiene'
 import { boardPayload } from '../queries'
 import { ownBoard } from '../scope'
 import { activityJson, taskJson, type ActivityRow, type FileRow, type TaskRow } from '../serialize'
@@ -52,8 +52,8 @@ boards.get('/boards/:slug/archive', async (c) => {
     `(LOWER(t.title) LIKE ?3 ESCAPE '\\' OR LOWER(COALESCE(t.sender,'')) LIKE ?3 ESCAPE '\\'` +
     ` OR LOWER(t.source) LIKE ?3 ESCAPE '\\' OR LOWER(COALESCE(t.quote,'')) LIKE ?3 ESCAPE '\\'` +
     ` OR LOWER(COALESCE(t.tags,'')) LIKE ?3 ESCAPE '\\')`
-  const where = `board_id = ?1 AND done_on < ?2` + (q ? ` AND ${search}` : '')
-  const whereJoin = `t.board_id = ?1 AND t.done_on < ?2` + (q ? ` AND ${searchJoin}` : '')
+  const where = `board_id = ?1 AND ${archivedSql('', '?2')}` + (q ? ` AND ${search}` : '')
+  const whereJoin = `t.board_id = ?1 AND ${archivedSql('t', '?2')}` + (q ? ` AND ${searchJoin}` : '')
   const bind = q ? [board.id, cutoff, like] : [board.id, cutoff]
 
   const [count, list] = await db.batch([
@@ -61,7 +61,7 @@ boards.get('/boards/:slug/archive', async (c) => {
     db
       .prepare(
         `SELECT t.*, c.key AS column_key FROM tasks t JOIN board_columns c ON c.id = t.board_column_id
-          WHERE ${whereJoin} ORDER BY t.done_on DESC, t.id DESC LIMIT ${per} OFFSET ${(page - 1) * per}`,
+          WHERE ${whereJoin} ORDER BY COALESCE(t.done_on, t.cancelled_on) DESC, t.id DESC LIMIT ${per} OFFSET ${(page - 1) * per}`,
       )
       .bind(...bind),
   ])

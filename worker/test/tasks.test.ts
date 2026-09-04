@@ -38,6 +38,7 @@ describe('create task', () => {
       shot: null,
       captured: today(),
       done_on: null,
+      cancelled_on: null,
       repeat: null,
       position: 0,
       files: [],
@@ -126,7 +127,7 @@ describe('update task', () => {
     const done = (await json(await patch(`/api/tasks/${task.id}`, { column_id: columnOf(board, 'done') }))).data
     expect(done.column_key).toBe('done')
     expect(done.done_on).toBe(today())
-    expect(done.history[0].text).toBe('Moved to Done')
+    expect(done.history[0].text).toBe('Moved: Inbox → Done')
 
     const back = (await json(await patch(`/api/tasks/${task.id}`, { column_id: columnOf(board, 'inbox') }))).data
     expect(back.done_on).toBeNull()

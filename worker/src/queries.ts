@@ -1,7 +1,7 @@
 import { PRIORITIES } from './defaults'
 import type { AuthBoard } from './env'
 import { notFound } from './errors'
-import { archiveCutoff, FEATURES, streakOf } from './hygiene'
+import { archivedSql, archiveCutoff, FEATURES, streakOf } from './hygiene'
 import {
   activityJson, columnJson, sourceJson, taskJson,
   type ActivityRow, type ColumnRow, type FileRow, type SourceRow, type TaskRow,
@@ -72,18 +72,20 @@ export async function boardPayload(db: D1Database, board: AuthBoard, today: stri
     db.prepare(`SELECT * FROM board_columns WHERE board_id = ?1 ORDER BY position, id`).bind(board.id),
     db.prepare(`SELECT * FROM sources WHERE board_id = ?1 ORDER BY position, id`).bind(board.id),
     db
-      .prepare(`SELECT * FROM tasks WHERE board_id = ?1 AND (done_on IS NULL OR done_on >= ?2) ORDER BY position, id`)
+      .prepare(`SELECT * FROM tasks WHERE board_id = ?1 AND NOT ${archivedSql('', '?2')} ORDER BY position, id`)
       .bind(board.id, cutoff),
     db
       .prepare(
         `SELECT f.* FROM task_files f JOIN tasks t ON t.id = f.task_id
-          WHERE t.board_id = ?1 AND (t.done_on IS NULL OR t.done_on >= ?2) ORDER BY f.id`,
+          WHERE t.board_id = ?1 AND NOT ${archivedSql('t', '?2')} ORDER BY f.id`,
       )
       .bind(board.id, cutoff),
     db
       .prepare(`SELECT * FROM activities WHERE board_id = ?1 ORDER BY created_at DESC, id DESC LIMIT 80`)
       .bind(board.id),
-    db.prepare(`SELECT COUNT(*) AS n FROM tasks WHERE board_id = ?1 AND done_on < ?2`).bind(board.id, cutoff),
+    db
+      .prepare(`SELECT COUNT(*) AS n FROM tasks WHERE board_id = ?1 AND ${archivedSql('', '?2')}`)
+      .bind(board.id, cutoff),
   ])
 
   const columns = cols.results as unknown as ColumnRow[]

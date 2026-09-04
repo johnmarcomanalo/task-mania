@@ -2,7 +2,7 @@ import { parseRule } from './recur'
 
 export interface ColumnRow {
   id: number; board_id: number; key: string; name: string; position: number; is_done: number
-  created_at: string; updated_at: string
+  is_cancelled: number; created_at: string; updated_at: string
 }
 export interface SourceRow {
   id: number; board_id: number; name: string; position: number; is_archived: number
@@ -13,6 +13,7 @@ export interface TaskRow {
   sender: string | null; due_date: string | null; priority: 'high' | 'normal' | 'low'
   quote: string | null; attachments_note: string | null; tags: string | null
   screenshot_path: string | null; captured_on: string | null; done_on: string | null
+  cancelled_on: string | null
   repeat: string | null; position: number; created_at: string; updated_at: string
 }
 export interface FileRow {
@@ -27,7 +28,10 @@ export interface ActivityRow {
 export const storageUrl = (key: string) => `/storage/${key}`
 
 export function columnJson(c: ColumnRow) {
-  return { id: c.id, key: c.key, name: c.name, position: c.position, is_done: c.is_done === 1 }
+  return {
+    id: c.id, key: c.key, name: c.name, position: c.position,
+    is_done: c.is_done === 1, is_cancelled: c.is_cancelled === 1,
+  }
 }
 
 /** task_count rides along only from the sources endpoint, which counts them. */
@@ -76,6 +80,7 @@ export function taskJson(t: TaskRow, extra: { columnKey: string; files: FileRow[
     shot: t.screenshot_path ? storageUrl(t.screenshot_path) : null,
     captured: t.captured_on,
     done_on: t.done_on,
+    cancelled_on: t.cancelled_on,
     repeat: parseRule(t.repeat),
     position: t.position,
     files: extra.files.map(fileJson),
