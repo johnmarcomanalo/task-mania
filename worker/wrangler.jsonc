@@ -19,8 +19,8 @@
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "task-mania-files" }],
   "vars": {
     "APP_TIMEZONE": "Asia/Manila",
-    "ACCESS_TEAM_DOMAIN": "https://REPLACE-ME.cloudflareaccess.com",
-    "ACCESS_AUD": "REPLACE-ME"
+    "ACCESS_TEAM_DOMAIN": "https://weathered-rain-8654.cloudflareaccess.com",
+    "ACCESS_AUD": "b266dac00d705dc3eece4416d0ce1a280b7c7215aa82507a98eb32db2835843c"
   },
   "observability": { "enabled": true }
 }
