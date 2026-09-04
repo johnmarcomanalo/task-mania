@@ -15,12 +15,13 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
 import { ApiError, api, type BulkRow, type Me, type TaskInput } from './api'
 import type { Board, ScanResult, ScanRow, Task, TaskFile, View } from './types'
-import { dueMeta, formatWhen, streakInfo } from './lib/dates'
+import { dueMeta, formatWhen, shiftDay, streakInfo } from './lib/dates'
 import { Lane } from './components/Lane'
 import { TaskCardBody } from './components/TaskCard'
 import { DetailPanel } from './components/DetailPanel'
 import { ScanReview } from './components/ScanReview'
 import { SourceManager } from './components/SourceManager'
+import { FilterBar, NO_FILTERS, applyFilters, type Filters } from './components/FilterBar'
 
 import './styles/nocturne.css'
 import './styles/app.css'
@@ -98,6 +99,8 @@ export default function App() {
 
   const [view, setView] = useState<View>('board')
   const [query, setQuery] = useState('')
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS)
+  const [showOlderDone, setShowOlderDone] = useState(false)
   const [openId, setOpenId] = useState<number | null>(null)
   const [draggingId, setDraggingId] = useState<number | null>(null)
 
@@ -290,7 +293,7 @@ export default function App() {
 
   const tasks = board?.tasks ?? []
 
-  const visible = useMemo(() => {
+  const searchFiltered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return tasks
     return tasks.filter((t) =>
@@ -301,7 +304,20 @@ export default function App() {
     )
   }, [tasks, query])
 
-  const streak = useMemo(() => streakInfo(tasks), [tasks])
+  const visible = useMemo(() => applyFilters(searchFiltered, filters), [searchFiltered, filters])
+  const filtersActive =
+    filters.urgent || filters.overdue || filters.week || filters.source !== '' || filters.tag !== ''
+
+  const sources = board?.sources.map((s) => s.name) ?? []
+  const tags = Array.from(new Set(tasks.flatMap((t) => t.tags))).sort()
+
+  const streak = useMemo(
+    () =>
+      board?.streak
+        ? { streak: board.streak.streak, doneToday: board.streak.done_today, week: board.streak.week }
+        : streakInfo(tasks),
+    [board?.streak, tasks],
+  )
   const openTask = useMemo(() => tasks.find((t) => t.id === openId) ?? null, [tasks, openId])
   const activeTask = useMemo(() => tasks.find((t) => t.id === draggingId) ?? null, [tasks, draggingId])
 
@@ -523,7 +539,10 @@ export default function App() {
       <header className="hdr">
         <div className="hdr__brand">
           <div className="hdr__name">{board.name}</div>
-          <div className="hdr__tally">{openCount} open · {tasks.length} total</div>
+          <div className="hdr__tally">
+            {openCount} open · {tasks.length} total
+            {board.archived_count ? ` · ${board.archived_count} archived` : ''}
+          </div>
         </div>
 
         <div className="streak">
@@ -574,7 +593,9 @@ export default function App() {
         </div>
 
         <div className="hdr__actions">
-          {query && <span className="hdr__count">{visible.length} match{visible.length === 1 ? '' : 'es'}</span>}
+          {(query || filtersActive) && (
+            <span className="hdr__count">{visible.length} match{visible.length === 1 ? '' : 'es'}</span>
+          )}
           <button
             className="btn btn-ghost"
             onClick={() => void quickAdd()}
@@ -611,6 +632,10 @@ export default function App() {
         </div>
       </header>
 
+      {(view === 'board' || view === 'due') && (
+        <FilterBar value={filters} onChange={setFilters} sources={sources} tags={tags} />
+      )}
+
       <div className="main">
         {view === 'board' && (
           <DndContext
@@ -628,6 +653,25 @@ export default function App() {
               {board.columns.map((column) => {
                 const shown = inColumn(visible, column.id)
                 const total = inColumn(tasks, column.id).length
+
+                if (column.is_done) {
+                  const recent = shown.filter((t) => !t.done_on || t.done_on >= shiftDay(-6))
+                  return (
+                    <Lane
+                      key={column.id}
+                      column={column}
+                      tasks={showOlderDone ? shown : recent}
+                      hiddenCount={total - shown.length}
+                      selectedId={openId}
+                      onOpen={(t) => setOpenId(t.id)}
+                      onAdd={addTask}
+                      olderCount={shown.length - recent.length}
+                      showingOlder={showOlderDone}
+                      onShowOlder={() => setShowOlderDone((v) => !v)}
+                    />
+                  )
+                }
+
                 return (
                   <Lane
                     key={column.id}

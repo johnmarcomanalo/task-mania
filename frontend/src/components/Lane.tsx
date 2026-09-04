@@ -11,9 +11,26 @@ interface Props {
   selectedId: number | null
   onOpen: (task: Task) => void
   onAdd: (columnId: number, title: string) => Promise<void>
+  /** Cards shown before the "N more…" toggle. */
+  limit?: number
+  /** Done lane only: tasks hidden by the 7-day rule. */
+  olderCount?: number
+  onShowOlder?: () => void
+  showingOlder?: boolean
 }
 
-export function Lane({ column, tasks, hiddenCount, selectedId, onOpen, onAdd }: Props) {
+export function Lane({
+  column,
+  tasks,
+  hiddenCount,
+  selectedId,
+  onOpen,
+  onAdd,
+  limit = 10,
+  olderCount = 0,
+  onShowOlder,
+  showingOlder = false,
+}: Props) {
   const { setNodeRef, isOver } = useDroppable({
     id: `col:${column.id}`,
     data: { type: 'column', column },
@@ -22,7 +39,10 @@ export function Lane({ column, tasks, hiddenCount, selectedId, onOpen, onAdd }: 
   const [composing, setComposing] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const shown = tasks.slice(0, expanded ? undefined : limit)
 
   useEffect(() => {
     if (composing) inputRef.current?.focus()
@@ -105,7 +125,7 @@ export function Lane({ column, tasks, hiddenCount, selectedId, onOpen, onAdd }: 
         )}
 
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
+          {shown.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -116,13 +136,25 @@ export function Lane({ column, tasks, hiddenCount, selectedId, onOpen, onAdd }: 
           ))}
         </SortableContext>
 
+        {tasks.length > limit && (
+          <button className="btn btn-ghost lane__more" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Show less' : `${tasks.length - limit} more…`}
+          </button>
+        )}
+
+        {olderCount > 0 && (
+          <button className="btn btn-ghost lane__more" onClick={onShowOlder}>
+            {showingOlder ? 'Hide older' : `Show ${olderCount} older`}
+          </button>
+        )}
+
         {tasks.length === 0 && !composing && (
           <p className="lane__empty">
             {hiddenCount > 0 ? (
               <>
                 {hiddenCount} hidden
                 <br />
-                by the search.
+                by the search or filters.
               </>
             ) : (
               <>

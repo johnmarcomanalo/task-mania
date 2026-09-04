@@ -199,6 +199,7 @@ body { margin: 0; background: var(--color-bg); }
   color: var(--color-neutral-500);
   line-height: 1.6;
 }
+.lane__more { align-self: center; font-size: 11px; min-height: 24px; }
 
 /* ---------- task card ---------- */
 .tcard {
@@ -442,7 +443,20 @@ body { margin: 0; background: var(--color-bg); }
   background: var(--color-accent-900);
   color: var(--color-accent-200);
 }
+/* A toggle chip (quick filters), distinct from the accent "selected option"
+   look above — same specificity as [aria-pressed='true'] and declared after
+   it, so a chip that is both toggled on and aria-pressed reads as toggled. */
+.chip.chip--on { background: var(--color-neutral-900); color: var(--color-neutral-100); border-color: transparent; }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+}
 
 /* attachments */
 .filerow {
