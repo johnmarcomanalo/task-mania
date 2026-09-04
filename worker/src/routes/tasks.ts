@@ -5,8 +5,9 @@ import type { AppEnv, Env } from '../env'
 import { invalid, notFound } from '../errors'
 import { activeSourceExists, findColumn, findTask, nextPosition, taskPayload } from '../queries'
 import { refund } from '../quota'
+import { describe as describeRule, nextDue, parseRule } from '../recur'
 import { idParam, ownBoard } from '../scope'
-import type { ColumnRow, FileRow } from '../serialize'
+import type { ColumnRow, FileRow, TaskRow } from '../serialize'
 import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSchema, type TaskUpdate } from '../validate'
 
 export const tasks = new Hono<AppEnv>()
@@ -87,6 +88,43 @@ export async function insertTask(
   return row!.id
 }
 
+/** Where a repeated task lands: the todo lane, else the first lane that is not done. */
+async function landingColumn(db: D1Database, boardId: number): Promise<ColumnRow> {
+  const cols = await rows<ColumnRow>(
+    db.prepare(`SELECT * FROM board_columns WHERE board_id = ?1 AND is_done = 0 ORDER BY position, id`).bind(boardId),
+  )
+  return cols.find((c) => c.key === 'todo') ?? cols[0]
+}
+
+/**
+ * A completed task with a repeat rule leaves its next occurrence behind: a copy
+ * in the landing column, due on the rule's next date, carrying the rule. The
+ * completed task keeps its place in Done and loses the rule.
+ */
+export async function spawnNext(db: D1Database, env: Env, boardId: number, task: TaskRow): Promise<number | null> {
+  const rule = parseRule(task.repeat)
+  if (!rule) return null
+
+  const today = todayIn(zone(env))
+  const base = task.due_date && task.due_date > today ? task.due_date : today
+  const next = nextDue(rule, base)
+  const column = await landingColumn(db, boardId)
+
+  const id = await insertTask(db, zone(env), boardId, column, {
+    title: task.title, source: task.source, sender: task.sender, due_date: next, priority: task.priority,
+    quote: task.quote, attachments_note: task.attachments_note, tags: task.tags,
+    screenshot_path: task.screenshot_path, repeat: task.repeat,
+  })
+  const what = describeRule(rule)
+  await db.batch([
+    note(db, boardId, `Repeats ${what} — next on ${next}`, id),
+    renumber(db, column.id),
+    db.prepare(`UPDATE tasks SET repeat = NULL, updated_at = ?1 WHERE id = ?2`).bind(nowIso(), task.id),
+    note(db, boardId, `Completed; repeats ${what} — next copy due ${next}`, task.id),
+  ])
+  return id
+}
+
 tasks.post('/boards/:slug/tasks', async (c) => {
   const board = ownBoard(c)
   const db = c.env.DB
@@ -131,6 +169,7 @@ tasks.patch('/tasks/:id', async (c) => {
   const statements: D1PreparedStatement[] = []
   const movedTo = 'board_column_id' in changes ? column : null
   if (movedTo) changes.done_on = movedTo.is_done ? todayIn(zone(c.env)) : null
+  const before = movedTo ? await findColumn(db, board.id, task.board_column_id) : null
 
   const keys = Object.keys(changes)
   statements.push(
@@ -146,6 +185,8 @@ tasks.patch('/tasks/:id', async (c) => {
     if (field in changes) statements.push(note(db, board.id, line, task.id))
   }
   await db.batch(statements)
+
+  if (movedTo?.is_done && !before?.is_done) await spawnNext(db, c.env, board.id, task)
 
   return c.json({ data: await taskPayload(db, board.id, task.id, true) })
 })
@@ -183,6 +224,8 @@ tasks.patch('/tasks/:id/move', async (c) => {
   ]
   if (to !== from) statements.push(renumber(db, to), note(db, board.id, `Moved to ${column.name}`, task.id))
   await db.batch(statements)
+
+  if (to !== from && column.is_done) await spawnNext(db, c.env, board.id, task)
 
   return c.json({ data: await taskPayload(db, board.id, task.id, true) })
 })
