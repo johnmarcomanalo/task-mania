@@ -49,7 +49,7 @@ export async function taskPayload(db: D1Database, boardId: number, taskId: numbe
     db.prepare(`SELECT * FROM task_files WHERE task_id = ?1 ORDER BY id`).bind(taskId),
     db
       .prepare(
-        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id
+        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id AND t.board_id = a.board_id
           WHERE a.task_id = ?1 ORDER BY a.created_at DESC, a.id DESC`,
       )
       .bind(taskId),
@@ -87,7 +87,7 @@ export async function boardPayload(db: D1Database, board: AuthBoard, today: stri
       .bind(board.id, cutoff),
     db
       .prepare(
-        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id
+        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id AND t.board_id = a.board_id
           WHERE a.board_id = ?1 ORDER BY a.created_at DESC, a.id DESC LIMIT 80`,
       )
       .bind(board.id),

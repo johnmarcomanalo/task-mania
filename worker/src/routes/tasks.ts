@@ -229,7 +229,7 @@ tasks.patch('/tasks/:id', async (c) => {
   }
   await db.batch(statements)
 
-  if (movedTo && isTerminal(movedTo) && !isTerminal(before!)) {
+  if (movedTo && isTerminal(movedTo) && (before ? !isTerminal(before) : true)) {
     await spawnNext(db, c.env, board.id, { ...task, ...changes } as TaskRow)
   }
 

@@ -25,7 +25,7 @@ boards.get('/boards/:slug/activity', async (c) => {
   const list = await rows<ActivityRow>(
     c.env.DB
       .prepare(
-        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id
+        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id AND t.board_id = a.board_id
           WHERE a.board_id = ?1 ORDER BY a.created_at DESC, a.id DESC LIMIT 200`,
       )
       .bind(board.id),

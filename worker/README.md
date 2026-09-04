@@ -89,7 +89,7 @@ You need a free Cloudflare account and this repository on GitHub.
 - **Cancel**: drag a task to the Cancelled column (or Status → Cancelled). It
   is terminal like Done but earns no streak credit; a repeating task skips
   straight to its next copy; archived after 30 days the same as Done.
-- **Schema change**: add `migrations/0004_<what>.sql`; the next deploy applies it.
+- **Schema change**: add `migrations/0005_<what>.sql`; the next deploy applies it.
 - **Time zone**: `APP_TIMEZONE` in `wrangler.jsonc` vars (default `Asia/Manila`) decides which calendar day `captured`/`done_on` and the streak use. The Done lane's 7-day window and the Overdue/This-week chips use the browser's clock; `done_on`, the archive cutoff and the streak use `APP_TIMEZONE`.
 - **Storage limits**: STORAGE_USER_MB / STORAGE_USER_FILES / STORAGE_TOTAL_MB in wrangler.jsonc vars (defaults 300 MB and 500 files per person, 5 GB in total, under the 10 GB R2 free tier). Uploads past a limit answer 422 with the reason; nothing is ever billed by the app itself. Usage per user: GET /api/me → storage.
 - **Start over**: `npx wrangler d1 execute DB --remote --command "DELETE FROM users"`

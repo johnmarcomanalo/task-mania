@@ -70,6 +70,28 @@ describe('activity lines', () => {
     expect(patched.history[0]).toMatchObject({ text: 'Notes edited', task_title: 'Send the quotation' })
   })
 
+  it('logs a column-only move as Moved then Created, newest first', async () => {
+    const { board, task } = await create()
+    const patched = (await json(await patch(`/api/tasks/${task.id}`, { column_id: columnOf(board, 'done') }))).data
+    expect(patched.history.map((h: { text: string }) => h.text)).toEqual(['Moved: Inbox → Done', 'Created in Inbox'])
+  })
+
+  it('spawns the next copy and logs both the rule change and the completion line when column and repeat change together', async () => {
+    const { board, task } = await create()
+    const patched = (await json(await patch(`/api/tasks/${task.id}`, {
+      column_id: columnOf(board, 'cancelled'), repeat: { freq: 'weekly', weekday: 4 },
+    }))).data
+    expect(patched.repeat).toBeNull()
+
+    const fresh = await boardOf(ALICE)
+    const copy = fresh.tasks.find((t) => t.id !== task.id) as { column_key: string; repeat: unknown } | undefined
+    expect(copy).toMatchObject({ column_key: 'todo', repeat: { freq: 'weekly', weekday: 4 } })
+
+    const texts = patched.history.map((h: { text: string }) => h.text)
+    expect(texts).toContain('Repeat: — → every Thursday')
+    expect(texts.some((t: string) => t.startsWith('Completed; repeats every Thursday — next copy due'))).toBe(true)
+  })
+
   describe('task_title', () => {
     it('carries the task title on board activity and the activity endpoint', async () => {
       const { board, task } = await create()
