@@ -42,7 +42,7 @@ export interface BoardJson {
   scan_enabled: boolean
   columns: { id: number; key: string; name: string; position: number; is_done: boolean; is_cancelled: boolean }[]
   tasks: Record<string, unknown>[]
-  activity: { id: number; task_id: number | null; text: string; at: string }[]
+  activity: { id: number; task_id: number | null; text: string; at: string; task_title: string | null }[]
 }
 
 export async function boardOf(who = ALICE): Promise<BoardJson> {

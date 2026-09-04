@@ -22,6 +22,7 @@ export interface FileRow {
 }
 export interface ActivityRow {
   id: number; board_id: number; task_id: number | null; text: string
+  task_title?: string | null
   created_at: string; updated_at: string
 }
 
@@ -51,7 +52,7 @@ export function fileJson(f: FileRow) {
 }
 
 export function activityJson(a: ActivityRow) {
-  return { id: a.id, task_id: a.task_id, text: a.text, at: a.created_at }
+  return { id: a.id, task_id: a.task_id, text: a.text, at: a.created_at, task_title: a.task_title ?? null }
 }
 
 export function parseTags(raw: string | null): string[] {

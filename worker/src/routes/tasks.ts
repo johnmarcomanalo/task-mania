@@ -7,7 +7,7 @@ import { activeSourceExists, findColumn, findTask, nextPosition, taskPayload } f
 import { refund } from '../quota'
 import { describe as describeRule, nextDue, parseRule } from '../recur'
 import { idParam, ownBoard } from '../scope'
-import type { ColumnRow, FileRow, TaskRow } from '../serialize'
+import { parseTags, type ColumnRow, type FileRow, type TaskRow } from '../serialize'
 import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSchema, type TaskUpdate } from '../validate'
 
 export const tasks = new Hono<AppEnv>()
@@ -99,10 +99,12 @@ export async function insertTask(
   return row!.id
 }
 
-/** Where a repeated task lands: the todo lane, else the first lane that is not done. */
+/** Where a repeated task lands: the todo lane, else the first lane that is not done or cancelled. */
 async function landingColumn(db: D1Database, boardId: number): Promise<ColumnRow> {
   const cols = await rows<ColumnRow>(
-    db.prepare(`SELECT * FROM board_columns WHERE board_id = ?1 AND is_done = 0 ORDER BY position, id`).bind(boardId),
+    db
+      .prepare(`SELECT * FROM board_columns WHERE board_id = ?1 AND is_done = 0 AND is_cancelled = 0 ORDER BY position, id`)
+      .bind(boardId),
   )
   return cols.find((c) => c.key === 'todo') ?? cols[0]
 }
@@ -148,14 +150,41 @@ tasks.post('/boards/:slug/tasks', async (c) => {
   return c.json({ data: await taskPayload(db, board.id, id, true) }, 201)
 })
 
-const LINES: Record<string, string> = {
-  title: 'Title edited',
-  priority: 'Priority changed',
-  due_date: 'Due date changed',
-  sender: 'Sender changed',
-  source: 'Source changed',
-  quote: 'Notes edited',
-  tags: 'Tags changed',
+/** `—` for a null or empty value, the value itself otherwise — a line's fallback side. */
+const side = (v: string | number | null | undefined): string => (v === null || v === undefined || v === '' ? '—' : String(v))
+
+/** A title cut to 40 chars + an ellipsis, so a long one does not overrun the line. */
+const cut40 = (s: string): string => (s.length > 40 ? `${s.slice(0, 40)}…` : s)
+
+/** The tags column (a JSON array string, or null) as a comma-joined line side. */
+const tagsText = (json: string | number | null | undefined): string => {
+  const list = parseTags(typeof json === 'string' ? json : null)
+  return list.length ? list.join(', ') : '—'
+}
+
+/** The repeat column (a JSON rule string, or null) as a described line side. */
+const repeatText = (json: string | number | null | undefined): string => {
+  const rule = parseRule(typeof json === 'string' ? json : null)
+  return rule ? describeRule(rule) : '—'
+}
+
+/**
+ * The activity lines a PATCH writes, one per changed field — the spec's exact
+ * texts, old → new. Order matches the spec table (Moved first, Notes last) so
+ * that reading newest-first shows them in reverse.
+ */
+export function changeLines(before: TaskRow, changes: Fields, columns: { from?: ColumnRow; to?: ColumnRow }): string[] {
+  const lines: string[] = []
+  if (columns.from && columns.to) lines.push(`Moved: ${columns.from.name} → ${columns.to.name}`)
+  if ('title' in changes) lines.push(`Title: "${cut40(before.title)}" → "${cut40(String(changes.title))}"`)
+  if ('priority' in changes) lines.push(`Priority: ${side(before.priority)} → ${side(changes.priority)}`)
+  if ('due_date' in changes) lines.push(`Due date: ${side(before.due_date)} → ${side(changes.due_date)}`)
+  if ('sender' in changes) lines.push(`Sender: ${side(before.sender)} → ${side(changes.sender)}`)
+  if ('source' in changes) lines.push(`Source: ${side(before.source)} → ${side(changes.source)}`)
+  if ('tags' in changes) lines.push(`Tags: ${tagsText(before.tags)} → ${tagsText(changes.tags)}`)
+  if ('repeat' in changes) lines.push(`Repeat: ${repeatText(before.repeat)} → ${repeatText(changes.repeat)}`)
+  if ('quote' in changes) lines.push('Notes edited')
+  return lines
 }
 
 tasks.patch('/tasks/:id', async (c) => {
@@ -195,9 +224,8 @@ tasks.patch('/tasks/:id', async (c) => {
       )
       .bind(...keys.map((k) => changes[k]), nowIso(), task.id),
   )
-  if (movedTo) statements.push(note(db, board.id, `Moved: ${before!.name} → ${movedTo.name}`, task.id))
-  for (const [field, line] of Object.entries(LINES)) {
-    if (field in changes) statements.push(note(db, board.id, line, task.id))
+  for (const line of changeLines(task, changes, { from: before ?? undefined, to: movedTo ?? undefined })) {
+    statements.push(note(db, board.id, line, task.id))
   }
   await db.batch(statements)
 

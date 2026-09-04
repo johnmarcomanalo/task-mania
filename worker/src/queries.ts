@@ -47,7 +47,12 @@ export async function taskPayload(db: D1Database, boardId: number, taskId: numbe
       )
       .bind(taskId, boardId),
     db.prepare(`SELECT * FROM task_files WHERE task_id = ?1 ORDER BY id`).bind(taskId),
-    db.prepare(`SELECT * FROM activities WHERE task_id = ?1 ORDER BY created_at DESC, id DESC`).bind(taskId),
+    db
+      .prepare(
+        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id
+          WHERE a.task_id = ?1 ORDER BY a.created_at DESC, a.id DESC`,
+      )
+      .bind(taskId),
   ])
 
   const row = task.results[0] as (TaskRow & { column_key: string }) | undefined
@@ -81,7 +86,10 @@ export async function boardPayload(db: D1Database, board: AuthBoard, today: stri
       )
       .bind(board.id, cutoff),
     db
-      .prepare(`SELECT * FROM activities WHERE board_id = ?1 ORDER BY created_at DESC, id DESC LIMIT 80`)
+      .prepare(
+        `SELECT a.*, t.title AS task_title FROM activities a LEFT JOIN tasks t ON t.id = a.task_id
+          WHERE a.board_id = ?1 ORDER BY a.created_at DESC, a.id DESC LIMIT 80`,
+      )
       .bind(board.id),
     db
       .prepare(`SELECT COUNT(*) AS n FROM tasks WHERE board_id = ?1 AND ${archivedSql('', '?2')}`)

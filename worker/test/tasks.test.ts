@@ -42,7 +42,9 @@ describe('create task', () => {
       repeat: null,
       position: 0,
       files: [],
-      history: [{ id: expect.any(Number), task_id: task.id, text: 'Created in Inbox', at: expect.any(String) }],
+      history: [
+        { id: expect.any(Number), task_id: task.id, text: 'Created in Inbox', at: expect.any(String), task_title: 'Send the quotation' },
+      ],
     })
   })
 
@@ -111,7 +113,11 @@ describe('update task', () => {
     const fresh = (await json(res)).data
     expect(fresh.title).toBe('Send the revised quotation')
     expect(fresh.priority).toBe('high')
-    expect(fresh.history.map((h: { text: string }) => h.text)).toEqual(['Priority changed', 'Title edited', 'Created in Inbox'])
+    expect(fresh.history.map((h: { text: string }) => h.text)).toEqual([
+      'Priority: normal → high',
+      'Title: "Send the quotation" → "Send the revised quotation"',
+      'Created in Inbox',
+    ])
   })
 
   it('logs nothing when nothing changed', async () => {
@@ -140,7 +146,11 @@ describe('update task', () => {
     }))).data
     expect(fresh.tags).toEqual(['finance'])
     expect(fresh.history.map((h: { text: string }) => h.text)).toEqual([
-      'Tags changed', 'Notes edited', 'Source changed', 'Sender changed', 'Created in Inbox',
+      'Notes edited',
+      'Tags: — → finance',
+      'Source: Manual → Email',
+      'Sender: — → Accounting',
+      'Created in Inbox',
     ])
   })
 
