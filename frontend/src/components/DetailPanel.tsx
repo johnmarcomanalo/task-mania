@@ -3,6 +3,7 @@ import type { Board, Priority, Task, TaskFile } from '../types'
 import { PRIORITIES, PRIORITY_LABEL, pickable } from '../types'
 import type { TaskInput } from '../api'
 import { formatSize, formatWhen } from '../lib/dates'
+import { RepeatEditor } from './RepeatEditor'
 
 interface Props {
   task: Task
@@ -153,6 +154,17 @@ export function DetailPanel({
             aria-label="Due date"
             onChange={(e) => onPatch(task.id, { due: e.target.value || null })}
           />
+
+          {board.features?.repeat && (
+            <>
+              <span className="detail__key">Repeat</span>
+              <RepeatEditor
+                value={task.repeat}
+                due={task.due}
+                onChange={(rule) => onPatch(task.id, { repeat: rule })}
+              />
+            </>
+          )}
 
           <span className="detail__key">Priority</span>
           <select

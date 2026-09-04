@@ -3,6 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task } from '../types'
 import { dueLabel, dueMeta } from '../lib/dates'
+import { badgeText, describeRule } from '../lib/recur'
 
 interface BodyProps {
   task: Task
@@ -19,6 +20,9 @@ export function TaskCardBody({ task, done }: BodyProps) {
       <div className="tcard__top">
         <span className="tcard__source">{task.source}</span>
         {task.priority === 'high' && <span className="tag tag-accent urgent-pill">Urgent</span>}
+        {task.repeat && (
+          <span className="tcard__repeat" title={describeRule(task.repeat)}>{badgeText(task.repeat)}</span>
+        )}
         <span style={{ flex: 1 }} />
         {task.shot && <span className="tcard__shot" title="Read from a screenshot">SHOT</span>}
       </div>

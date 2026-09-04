@@ -464,6 +464,7 @@ export default function App() {
     if (body.quote !== undefined) out.quote = body.quote ?? ''
     if (body.attachments !== undefined) out.attachments = body.attachments ?? ''
     if (body.tags !== undefined) out.tags = body.tags
+    if (body.repeat !== undefined) out.repeat = body.repeat
     if (body.column_id !== undefined) {
       out.column_id = body.column_id
       out.column_key = board?.columns.find((c) => c.id === body.column_id)?.key ?? task.column_key

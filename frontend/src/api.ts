@@ -1,4 +1,4 @@
-import type { Board, Priority, ScanResult, Source, Task, TaskFile } from './types'
+import type { ArchivePage, Board, Priority, RepeatRule, ScanResult, Source, Task, TaskFile } from './types'
 
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api').replace(/\/$/, '')
 
@@ -72,6 +72,7 @@ export interface TaskInput {
   quote?: string | null
   attachments?: string | null
   tags?: string[]
+  repeat?: RepeatRule | null
 }
 
 export interface BulkRow extends TaskInput {
@@ -83,6 +84,9 @@ export const api = {
   me: () => request<Me>('/me'),
 
   getBoard: (slug: string) => request<Board>(`/boards/${encodeURIComponent(slug)}`),
+
+  archive: (slug: string, q: string, page: number) =>
+    request<ArchivePage>(`/boards/${encodeURIComponent(slug)}/archive?q=${encodeURIComponent(q)}&page=${page}`),
 
   createTask: (slug: string, body: TaskInput) =>
     request<Task>(`/boards/${encodeURIComponent(slug)}/tasks`, {

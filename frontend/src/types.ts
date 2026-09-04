@@ -1,6 +1,11 @@
 export type Priority = 'high' | 'normal' | 'low'
 
-export type View = 'board' | 'due' | 'log'
+export type View = 'board' | 'due' | 'log' | 'archive'
+
+export type RepeatRule =
+  | { freq: 'weekly'; weekday: number }
+  | { freq: 'monthly'; day: number }
+  | { freq: 'monthly'; nth: 1 | 2 | 3 | 4 | -1; weekday: number }
 
 export interface Column {
   id: number
@@ -44,6 +49,8 @@ export interface Task {
   position: number
   files: TaskFile[]
   history?: Activity[]
+  /** Absent on the local Laravel API. */
+  repeat?: RepeatRule | null
 }
 
 /** A channel the board captures from. Tasks store the name, not the id. */
@@ -69,6 +76,17 @@ export interface Board {
   columns: Column[]
   tasks: Task[]
   activity: Activity[]
+  archived_count?: number
+  streak?: { streak: number; done_today: number; week: { label: string; count: number }[] }
+  /** What this backend supports; absent on the local Laravel API. */
+  features?: { repeat: boolean; archive: boolean }
+}
+
+export interface ArchivePage {
+  tasks: Task[]
+  total: number
+  page: number
+  per_page: number
 }
 
 /** A proposed task from a screenshot read, before the user confirms it. */
