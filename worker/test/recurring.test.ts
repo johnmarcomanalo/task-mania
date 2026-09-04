@@ -85,6 +85,37 @@ describe('repeat on completion', () => {
     await patch(`/api/tasks/${copy.id}/move`, { column_id: columnOf(board, 'done'), position: 0 })
     expect(await tasksOf(board.slug)).toHaveLength(3)
   })
+
+  it('a PATCH that adds a rule and moves to Done in one go spawns from the new rule', async () => {
+    const { board, task } = await make({ repeat: null })
+    const res = await patch(`/api/tasks/${task.id}`, {
+      column_id: columnOf(board, 'done'), repeat: { freq: 'weekly', weekday: 4 },
+    })
+    expect(res.status).toBe(200)
+    const done = (await json(res)).data
+    expect(done.repeat).toBeNull()
+
+    const all = await tasksOf(board.slug)
+    expect(all).toHaveLength(2)
+    const copy = all.find((t) => t.id !== task.id)!
+    expect(copy.column_key).toBe('todo')
+    expect(copy.repeat).toEqual({ freq: 'weekly', weekday: 4 })
+  })
+
+  it('a PATCH that clears the rule and moves to Done in one go does not spawn', async () => {
+    const { board, task } = await make({})
+    const res = await patch(`/api/tasks/${task.id}`, { column_id: columnOf(board, 'done'), repeat: null })
+    expect(res.status).toBe(200)
+    expect((await json(res)).data.repeat).toBeNull()
+    expect(await tasksOf(board.slug)).toHaveLength(1)
+  })
+
+  it('a PATCH that changes due and moves to Done in one go spawns from the new due date', async () => {
+    const { board, task } = await make({ due: '2026-09-03' })
+    await patch(`/api/tasks/${task.id}`, { column_id: columnOf(board, 'done'), due: '2026-10-01' })
+    const copy = (await tasksOf(board.slug)).find((t) => t.id !== task.id)!
+    expect(copy.due).toBe(expectedNext('2026-10-01'))
+  })
 })
 
 function expectedNext(due: string, rule: any = { freq: 'weekly', weekday: 4 }) {

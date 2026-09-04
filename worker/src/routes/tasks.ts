@@ -187,7 +187,9 @@ tasks.patch('/tasks/:id', async (c) => {
   }
   await db.batch(statements)
 
-  if (movedTo?.is_done && !before?.is_done) await spawnNext(db, c.env, board.id, task)
+  if (movedTo?.is_done && !before?.is_done) {
+    await spawnNext(db, c.env, board.id, { ...task, ...changes } as TaskRow)
+  }
 
   return c.json({ data: await taskPayload(db, board.id, task.id, true) })
 })

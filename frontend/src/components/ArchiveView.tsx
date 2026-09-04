@@ -60,8 +60,7 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
   async function restore(task: Task) {
     try {
       await api.moveTask(task.id, { column_id: todoColumnId, position: 0 })
-      setRows((prev) => prev.filter((t) => t.id !== task.id))
-      setTotal((t) => t - 1)
+      void fetchPage(debouncedQ, 1, false)
       notify('Restored to To Do')
       onRestored()
     } catch (e) {
