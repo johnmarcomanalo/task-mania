@@ -2,6 +2,9 @@ export function nowIso(): string {
   return new Date().toISOString()
 }
 
+/** Which time zone "today" is in for this board, per APP_TIMEZONE (default Manila). */
+export const zone = (env: { APP_TIMEZONE?: string }) => env.APP_TIMEZONE || 'Asia/Manila'
+
 /** Calendar date (YYYY-MM-DD) of an instant in a time zone. en-CA formats that way natively. */
 export function todayIn(tz: string, at: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {

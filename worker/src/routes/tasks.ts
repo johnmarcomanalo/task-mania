@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { nowIso, todayIn } from '../dates'
+import { nowIso, todayIn, zone } from '../dates'
 import { note, renumber, rows } from '../db'
 import type { AppEnv, Env } from '../env'
 import { invalid, notFound } from '../errors'
@@ -12,7 +12,8 @@ import { bulkSchema, jsonBody, moveSchema, parse, taskCreateSchema, taskUpdateSc
 
 export const tasks = new Hono<AppEnv>()
 
-export const zone = (env: Env) => env.APP_TIMEZONE || 'Asia/Manila'
+// zone(env) now lives in ../dates; re-exported so existing imports of it from here keep compiling.
+export { zone }
 
 type Fields = Record<string, string | number | null>
 

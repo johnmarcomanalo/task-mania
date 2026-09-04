@@ -1,6 +1,7 @@
 import { PRIORITIES } from './defaults'
 import type { AuthBoard } from './env'
 import { notFound } from './errors'
+import { archiveCutoff, FEATURES, streakOf } from './hygiene'
 import {
   activityJson, columnJson, sourceJson, taskJson,
   type ActivityRow, type ColumnRow, type FileRow, type SourceRow, type TaskRow,
@@ -59,18 +60,30 @@ export async function taskPayload(db: D1Database, boardId: number, taskId: numbe
   })
 }
 
-/** BoardResource with columns, sources, tasks (+files) and the latest 80 activities. */
-export async function boardPayload(db: D1Database, board: AuthBoard) {
-  const [cols, srcs, tsks, fls, acts] = await db.batch([
+/**
+ * BoardResource with columns, sources, tasks (+files, minus archived ones) and
+ * the latest 80 activities, plus how many tasks are archived, the streak and
+ * the feature flags the UI gates Repeat/Archive on. `today` (the board's own
+ * calendar day) decides the archive cutoff and the streak's "today".
+ */
+export async function boardPayload(db: D1Database, board: AuthBoard, today: string) {
+  const cutoff = archiveCutoff(today)
+  const [cols, srcs, tsks, fls, acts, archived] = await db.batch([
     db.prepare(`SELECT * FROM board_columns WHERE board_id = ?1 ORDER BY position, id`).bind(board.id),
     db.prepare(`SELECT * FROM sources WHERE board_id = ?1 ORDER BY position, id`).bind(board.id),
-    db.prepare(`SELECT * FROM tasks WHERE board_id = ?1 ORDER BY position, id`).bind(board.id),
     db
-      .prepare(`SELECT f.* FROM task_files f JOIN tasks t ON t.id = f.task_id WHERE t.board_id = ?1 ORDER BY f.id`)
-      .bind(board.id),
+      .prepare(`SELECT * FROM tasks WHERE board_id = ?1 AND (done_on IS NULL OR done_on >= ?2) ORDER BY position, id`)
+      .bind(board.id, cutoff),
+    db
+      .prepare(
+        `SELECT f.* FROM task_files f JOIN tasks t ON t.id = f.task_id
+          WHERE t.board_id = ?1 AND (t.done_on IS NULL OR t.done_on >= ?2) ORDER BY f.id`,
+      )
+      .bind(board.id, cutoff),
     db
       .prepare(`SELECT * FROM activities WHERE board_id = ?1 ORDER BY created_at DESC, id DESC LIMIT 80`)
       .bind(board.id),
+    db.prepare(`SELECT COUNT(*) AS n FROM tasks WHERE board_id = ?1 AND done_on < ?2`).bind(board.id, cutoff),
   ])
 
   const columns = cols.results as unknown as ColumnRow[]
@@ -96,5 +109,8 @@ export async function boardPayload(db: D1Database, board: AuthBoard) {
       taskJson(t, { columnKey: keyOf.get(t.board_column_id) ?? '', files: filesOf.get(t.id) ?? [] }),
     ),
     activity: (acts.results as unknown as ActivityRow[]).map(activityJson),
+    archived_count: (archived.results[0] as { n: number }).n,
+    streak: await streakOf(db, board.id, today),
+    features: FEATURES,
   }
 }
