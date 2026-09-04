@@ -13,7 +13,7 @@ interface Props {
   onAdd: (columnId: number, title: string) => Promise<void>
   /** Cards shown before the "N more…" toggle. */
   limit?: number
-  /** Done lane only: tasks hidden by the 7-day rule. */
+  /** Done/Cancelled lanes only: tasks hidden by the 7-day rule. */
   olderCount?: number
   onShowOlder?: () => void
   showingOlder?: boolean
@@ -35,6 +35,8 @@ export function Lane({
     id: `col:${column.id}`,
     data: { type: 'column', column },
   })
+
+  const closed: 'done' | 'cancelled' | null = column.is_done ? 'done' : column.is_cancelled ? 'cancelled' : null
 
   const [composing, setComposing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -129,7 +131,7 @@ export function Lane({
             <TaskCard
               key={task.id}
               task={task}
-              done={column.is_done}
+              closed={closed}
               selected={selectedId === task.id}
               onOpen={onOpen}
             />

@@ -83,25 +83,31 @@ export function ArchiveView({ slug, todoColumnId, onRestored, notify }: Props) {
         />
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {rows.map((t) => (
-            <div className="archrow" key={t.id}>
-              <span className="archrow__when">{t.done_on ? formatDay(t.done_on) : ''}</span>
-              <span>{t.title}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-neutral-500)' }}>
-                <span>{t.sender ?? t.source}</span>
-                {t.tags.map((tag) => (
-                  <span key={tag} className="tcard__tag">{tag}</span>
-                ))}
-              </span>
-              <button
-                className="btn btn-ghost"
-                style={{ fontSize: 11.5, minHeight: 26 }}
-                onClick={() => void restore(t)}
-              >
-                Restore
-              </button>
-            </div>
-          ))}
+          {rows.map((t) => {
+            const closedOn = t.done_on ?? t.cancelled_on
+            return (
+              <div className="archrow" key={t.id}>
+                <span className="archrow__when">{closedOn ? formatDay(closedOn) : ''}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{t.title}</span>
+                  {t.cancelled_on && <span className="archrow__cancelled">Cancelled</span>}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-neutral-500)' }}>
+                  <span>{t.sender ?? t.source}</span>
+                  {t.tags.map((tag) => (
+                    <span key={tag} className="tcard__tag">{tag}</span>
+                  ))}
+                </span>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: 11.5, minHeight: 26 }}
+                  onClick={() => void restore(t)}
+                >
+                  Restore
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         {!loading && rows.length === 0 && (

@@ -7,11 +7,12 @@ import { badgeText, describeRule } from '../lib/recur'
 
 interface BodyProps {
   task: Task
-  done: boolean
+  /** The task's lane: terminal ('done'/'cancelled'), or open (null). */
+  closed: 'done' | 'cancelled' | null
 }
 
 /** Shared by the board and the drag overlay so the two cannot drift apart. */
-export function TaskCardBody({ task, done }: BodyProps) {
+export function TaskCardBody({ task, closed }: BodyProps) {
   const meta = dueMeta(task.due)
   const urgent = meta?.tone === 'late' || meta?.tone === 'now'
 
@@ -27,7 +28,7 @@ export function TaskCardBody({ task, done }: BodyProps) {
         {task.shot && <span className="tcard__shot" title="Read from a screenshot">SHOT</span>}
       </div>
 
-      <div className={done ? 'tcard__title tcard__title--done' : 'tcard__title'}>{task.title}</div>
+      <div className={closed ? 'tcard__title tcard__title--done' : 'tcard__title'}>{task.title}</div>
 
       {task.quote && <div className="tcard__quote">{task.quote}</div>}
 
@@ -57,7 +58,7 @@ interface Props extends BodyProps {
   onOpen: (task: Task) => void
 }
 
-export function TaskCard({ task, done, selected, onOpen }: Props) {
+export function TaskCard({ task, closed, selected, onOpen }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: 'task', task },
@@ -71,7 +72,10 @@ export function TaskCard({ task, done, selected, onOpen }: Props) {
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={
-        'tcard' + (isDragging ? ' tcard--dragging' : '') + (selected ? ' tcard--selected' : '')
+        'tcard'
+        + (isDragging ? ' tcard--dragging' : '')
+        + (selected ? ' tcard--selected' : '')
+        + (closed === 'cancelled' ? ' tcard--cancelled' : '')
       }
       {...attributes}
       {...listeners}
@@ -86,7 +90,7 @@ export function TaskCard({ task, done, selected, onOpen }: Props) {
         dragKeyDown?.(e)
       }}
     >
-      <TaskCardBody task={task} done={done} />
+      <TaskCardBody task={task} closed={closed} />
     </div>
   )
 }

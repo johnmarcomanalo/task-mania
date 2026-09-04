@@ -34,6 +34,8 @@ export function FilterBar({ value, onChange, sources, tags }: Props) {
         This week
       </button>
 
+      <span className="filterbar__sep" aria-hidden="true" />
+
       <select
         className="input mini"
         aria-label="Filter by source"

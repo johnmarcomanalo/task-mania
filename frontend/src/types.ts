@@ -13,6 +13,8 @@ export interface Column {
   name: string
   position: number
   is_done: boolean
+  /** Absent on the local Laravel API. */
+  is_cancelled?: boolean
 }
 
 export interface TaskFile {
@@ -29,6 +31,8 @@ export interface Activity {
   task_id: number | null
   text: string
   at: string
+  /** Absent on the local Laravel API. */
+  task_title?: string | null
 }
 
 export interface Task {
@@ -46,6 +50,8 @@ export interface Task {
   shot: string | null
   captured: string | null
   done_on: string | null
+  /** Absent on the local Laravel API. */
+  cancelled_on?: string | null
   position: number
   files: TaskFile[]
   history?: Activity[]

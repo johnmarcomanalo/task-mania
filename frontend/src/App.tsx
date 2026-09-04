@@ -16,7 +16,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { ApiError, api, type BulkRow, type Me, type TaskInput } from './api'
 import type { Board, ScanResult, ScanRow, Task, TaskFile, View } from './types'
 import { dueMeta, formatWhen, shiftDay, streakInfo } from './lib/dates'
-import { applyFilters, isFiltersActive, NO_FILTERS, type Filters } from './lib/filters'
+import { applyFilters, isClosed, isFiltersActive, NO_FILTERS, type Filters } from './lib/filters'
 import { Lane } from './components/Lane'
 import { TaskCardBody } from './components/TaskCard'
 import { DetailPanel } from './components/DetailPanel'
@@ -325,14 +325,18 @@ export default function App() {
   )
   const openTask = useMemo(() => tasks.find((t) => t.id === openId) ?? null, [tasks, openId])
   const activeTask = useMemo(() => tasks.find((t) => t.id === draggingId) ?? null, [tasks, draggingId])
+  const activeClosed = useMemo<'done' | 'cancelled' | null>(() => {
+    const column = activeTask && board?.columns.find((c) => c.id === activeTask.column_id)
+    return column?.is_done ? 'done' : column?.is_cancelled ? 'cancelled' : null
+  }, [activeTask, board?.columns])
 
-  const openCount = tasks.filter((t) => !t.done_on).length
+  const openCount = tasks.filter((t) => !isClosed(t)).length
   const maxWeek = Math.max(1, ...streak.week.map((w) => w.count))
 
   const dueRows = useMemo(
     () =>
       visible
-        .filter((t) => t.due && !t.done_on)
+        .filter((t) => t.due && !isClosed(t))
         .sort((a, b) => a.due.localeCompare(b.due)),
     [visible],
   )
@@ -659,8 +663,11 @@ export default function App() {
                 const shown = inColumn(visible, column.id)
                 const total = inColumn(tasks, column.id).length
 
-                if (column.is_done) {
-                  const recent = shown.filter((t) => !t.done_on || t.done_on >= shiftDay(-6))
+                if (column.is_done || column.is_cancelled) {
+                  const recent = shown.filter((t) => {
+                    const closedDate = t.done_on ?? t.cancelled_on
+                    return !closedDate || closedDate >= shiftDay(-6)
+                  })
                   return (
                     <Lane
                       key={column.id}
@@ -693,11 +700,8 @@ export default function App() {
 
             <DragOverlay dropAnimation={{ duration: 160, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }}>
               {activeTask && (
-                <div className="tcard tcard--overlay">
-                  <TaskCardBody
-                    task={activeTask}
-                    done={!!board.columns.find((c) => c.id === activeTask.column_id)?.is_done}
-                  />
+                <div className={'tcard tcard--overlay' + (activeClosed === 'cancelled' ? ' tcard--cancelled' : '')}>
+                  <TaskCardBody task={activeTask} closed={activeClosed} />
                 </div>
               )}
             </DragOverlay>
