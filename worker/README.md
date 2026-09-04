@@ -24,6 +24,10 @@ npm --prefix worker run dev            # builds the UI, migrates local D1, serve
 
 `npm --prefix worker test` runs the suite; `npm --prefix worker run typecheck` the compiler.
 
+The plain-language walkthrough of the whole cloud setup — what each product
+is, what we clicked, the gotchas, and the limits — is
+[`../docs/cloudflare-setup.md`](../docs/cloudflare-setup.md).
+
 The local Laravel + XAMPP setup in `../backend` keeps working independently
 (`php artisan serve` + `npm run dev` in `../frontend`); it has its own data.
 
@@ -40,19 +44,28 @@ You need a free Cloudflare account and this repository on GitHub.
    ```
 
    Paste the `database_id` the first command prints into `wrangler.jsonc`.
-   Commit and push.
+   Commit and push. If the bucket command fails with code 10042, enable R2
+   first: dashboard → *Storage & databases* → *R2* → *Overview* → complete the
+   checkout (R2 asks for a payment method; the free allowance still applies).
 3. **Connect the repository** — dashboard → *Workers & Pages* → *Create* →
    *Import a repository* → pick `task-mania`. Settings: root directory
    `worker`, build command `npm run build`, deploy command `npm run deploy`.
    Save and deploy. The first build applies the migrations and publishes
    `https://task-mania.<your-account>.workers.dev`. Every API call answers
    `401` until step 5 — expected.
-4. **Turn on Access** — the Worker → *Settings* → *Domains & Routes* →
-   `workers.dev` → *Enable Cloudflare Access*. If Zero Trust asks you to pick a
-   team name, do; your team domain is `https://<team>.cloudflareaccess.com`.
-   Then *Manage Cloudflare Access* → the application → *Policies*: edit the
-   policy so **Include = Everyone**, login method **One-time PIN**. On the
-   application's overview copy the **Application Audience (AUD) tag**.
+4. **Turn on Access** — the Worker → **Access** tab → *Protect this Worker
+   behind Access* → choose **All traffic** (not *Previews only*) → *Apply
+   Access*. If Zero Trust asks you to pick a team name, do; your team domain
+   is `https://<team>.cloudflareaccess.com`. Then, in Zero Trust:
+   - *Integrations → Identity providers → Add an identity provider →
+     **One-time PIN*** (without it the login page only offers "Sign in with
+     Cloudflare", which admits account members only);
+   - *Access controls → Applications → the `task-mania` app → Configure →
+     **Login methods***: *Accept all available identity providers* on (or
+     One-time PIN only + *Apply instant authentication*);
+   - same app → **Policies**: edit the policy so **Include = Everyone**;
+   - same app → **Additional settings**: copy the **Application Audience (AUD)
+     Tag**.
 5. **Tell the Worker about Access** — put the team domain and the AUD tag into
    `vars` in `wrangler.jsonc` (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`), commit,
    push. The push redeploys.
@@ -61,13 +74,14 @@ You need a free Cloudflare account and this repository on GitHub.
 ## Day to day
 
 - **Deploy**: push to `main`. Build → migrations → deploy, about two minutes.
-- **Logs**: the Worker → *Observability*, or `npx wrangler tail` in `worker/`.
-- **Database**: dashboard → *Storage & Databases* → *D1* → `task-mania` →
+- **Logs**: the Worker → *Logs*, or `npx wrangler tail` in `worker/`.
+- **Database**: dashboard → *Storage & databases* → *D1 SQL database* → `task-mania` →
   *Console* (SQL box), or `npx wrangler d1 execute DB --remote --command "SELECT count(*) FROM tasks"`.
-- **Files**: dashboard → *R2* → `task-mania-files`.
-- **Who may sign in**: the Access application → *Policies*. Change *Include*
-  to a list of emails or an email domain to close the door. The free plan
-  covers 50 users a month.
+- **Files**: dashboard → *Storage & databases* → *R2* → `task-mania-files`.
+- **Who may sign in**: Zero Trust → *Access controls → Applications* → the app
+  → *Configure → Policies*. Change *Include* to **Emails** (a list) or **Emails
+  ending in** `@yourcompany.com` to close the door. The free plan covers 50
+  users a month.
 - **Schema change**: add `migrations/0002_<what>.sql`; the next deploy applies it.
 - **Time zone**: `APP_TIMEZONE` in `wrangler.jsonc` vars (default `Asia/Manila`) decides which calendar day `captured`/`done_on` and the streak use.
 - **Start over**: `npx wrangler d1 execute DB --remote --command "DELETE FROM users"`
@@ -83,8 +97,13 @@ R2 10 GB · Access 50 users/month. A person, or a small team, stays far below.
 
 - **401 on every request** after Access is on → `ACCESS_TEAM_DOMAIN` /
   `ACCESS_AUD` missing or wrong in `wrangler.jsonc`.
-- **"Your session ended"** in the UI → the Access session expired; reload.
-  Session length: Zero Trust → *Settings* → *Authentication*.
+- **"Your session ended"** in the UI → the Access session (24 h by default)
+  expired; reload. Session length: the app → *Configure* (per app) or Zero
+  Trust → *Access controls → Access settings* (global).
+- **Login page offers only "Sign in with Cloudflare"** → One-time PIN is not
+  enabled or not allowed on the app; see step 4.
+- **The site loads with no login page** → Access is on *Previews only*; the
+  Worker's *Access* tab → *All traffic*.
 - **No PIN email** → check spam; allow `notify.cloudflare.com`.
 - **Build fails installing the frontend** → `frontend/package-lock.json` must
   be committed (`npm ci` needs it).
